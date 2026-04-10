@@ -21,9 +21,15 @@
     <ClCompile Include="SonicCore.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="StochasticEngine.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="SonicCore.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="StochasticEngine.h">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>

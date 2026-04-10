@@ -80,7 +80,5 @@ float SonicCore::GetBandEnergy(AudioBand band) const
 		sum += m_Spectrum[i];
 	}
 
-	int count = (range.end - range.start + 1);
-
 	return sum * range.invCount; // avoid division by zero
 }
