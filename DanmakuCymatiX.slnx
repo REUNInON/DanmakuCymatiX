@@ -1,0 +1,7 @@
+<Solution>
+  <Configurations>
+    <Platform Name="x64" />
+    <Platform Name="x86" />
+  </Configurations>
+  <Project Path="DanmakuCymatiX/DanmakuCymatiX.vcxproj" Id="a96c594f-f8e1-4058-b391-56223e40256d" />
+</Solution>
