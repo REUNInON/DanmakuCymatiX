@@ -2,7 +2,7 @@
 
 ## Pipeline
 ### Load Audio & FFT
-Uses BASS(https://www.un4seen.com/).
+Uses BASS[(https://www.un4seen.com/)].
 
 ### Stochastic Engine
 1. Poisson Distribution
