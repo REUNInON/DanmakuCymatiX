@@ -52,7 +52,7 @@ public:
 	/// <returns></returns>
 	float CalculateEntropy(const std::array<float, SonicCore::SPECTRUM_SIZE>& spectrum);
 
-	// BIVARIATE GAUSS
+	// BIVARIATE GAUSS SIGMA CALCULATION (LERP)
 	float CalculateSpatialSpread(float energy, float minSpread, float maxSpread);
 
 	// MARKOV CHAIN
@@ -61,8 +61,13 @@ public:
 private:
 	std::mt19937 m_rng; // Mersenne Twister random number generator
 
+	// MARKOV MATRIX & STATES
 	int currentState; // Current state for Markov Chain
-
-	// TODO: Markov Chain Matrix and Transition Probabilities
+	static constexpr std::array<std::array<float, 3>, 3> m_transitionMatrix =
+	{{
+		{0.70f, 0.20f, 0.05f},
+		{0.10f, 0.60f, 0.30f},
+		{0.20f, 0.30f, 0.50f}
+	}};
 };
 

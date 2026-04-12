@@ -18,6 +18,7 @@ int StochasticEngine::CalculatePoisson(float lambda)
 	if (lambda < 0.00001f) return 0;
 
 	std::poisson_distribution<int> distribution(lambda);
+	// TODO: You can use FFT output as seed instead of m_rng.
 	return distribution(m_rng);
 }
 
