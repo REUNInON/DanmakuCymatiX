@@ -5,7 +5,7 @@
 SonicCore::SonicCore() : m_streamHandle(0)
 {
 	// Initialize spectrum data to zero
-	m_Spectrum.fill(0.0f);
+	m_spectrum.fill(0.0f);
 
 	// Precompute Band Ranges
 	m_bandRanges[static_cast<int>(AudioBand::SubBass)] = { 0, 1, 1.0f / (1 - 0 + 1) };
@@ -66,7 +66,7 @@ void SonicCore::Play()
 void SonicCore::Tick()
 {
 	assert(m_streamHandle != 0 && "Audio stream must be loaded before analyzing!");
-	BASS_ChannelGetData(m_streamHandle, m_Spectrum.data(), BASS_DATA_FFT1024);
+	BASS_ChannelGetData(m_streamHandle, m_spectrum.data(), BASS_DATA_FFT1024);
 }
 
 float SonicCore::GetBandEnergy(AudioBand band) const
@@ -77,7 +77,7 @@ float SonicCore::GetBandEnergy(AudioBand band) const
 	float sum = 0.0f;
 	for (size_t i = range.start; i <= range.end; ++i)
 	{
-		sum += m_Spectrum[i];
+		sum += m_spectrum[i];
 	}
 
 	return sum * range.invCount; // avoid division by zero

@@ -30,7 +30,7 @@ public:
 	void Play();
 	void Tick();
 
-	const std::array<float, SPECTRUM_SIZE>& GetRawSpectrum() const { return m_Spectrum; }
+	const std::array<float, SPECTRUM_SIZE>& GetRawSpectrum() const { return m_spectrum; }
 	float GetBandEnergy(AudioBand band) const;
 
 private:
@@ -38,7 +38,7 @@ private:
 	unsigned long m_streamHandle;
 
 	// Cached Spectrum Data
-	std::array<float, SPECTRUM_SIZE> m_Spectrum;
+	std::array<float, SPECTRUM_SIZE> m_spectrum;
 
 	// Data Oriented Design: Predefined frequency band indices for quick access
 	struct BandRange

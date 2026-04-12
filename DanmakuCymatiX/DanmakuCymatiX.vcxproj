@@ -133,11 +133,15 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClCompile Include="BulletPipeline.cpp" />
     <ClCompile Include="Main.cpp" />
+    <ClCompile Include="Renderer.cpp" />
     <ClCompile Include="SonicCore.cpp" />
     <ClCompile Include="StochasticEngine.cpp" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="BulletPipeline.h" />
+    <ClInclude Include="Renderer.h" />
     <ClInclude Include="SonicCore.h" />
     <ClInclude Include="StochasticEngine.h" />
   </ItemGroup>
