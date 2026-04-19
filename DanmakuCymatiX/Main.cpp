@@ -1,23 +1,140 @@
 #include <iostream>
 #include "bass.h"
+#include "Renderer.h"
+#include "StochasticEngine.h"
+#include "DanmakuPipeline.h"
+#include <windows.h>
 
-int main() 
+#include <chrono>
+
+// GLOBAL VARIABLES
+Renderer g_renderer;
+StochasticEngine g_physics;
+DanmakuPipeline g_pipeline;
+
+
+// Window Creation Helper
+HWND SetupWindow(HINSTANCE hInstance, int width, int height);
+
+
+// ============================================================================
+// MAIN ENTRY POINT
+// ============================================================================
+int WINAPI wWinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance, _In_ LPWSTR lpCmdLine, _In_ int nCmdShow)
 {
-    // ======================================================
-    // TEST
-	// ======================================================
-    
-    //  Initialize Soundcard (-1: default device, 44100hz)
-    if (BASS_Init(-1, 44100, 0, 0, NULL)) 
+
+    // 0. UNUSED PARAMETERS
+    UNREFERENCED_PARAMETER(hPrevInstance);
+    UNREFERENCED_PARAMETER(lpCmdLine);
+
+    FILE* stream; freopen_s(&stream, "CONOUT$", "w", stdout);
+
+    // 1. OPEN WINDOW
+    const UINT WIDTH = 750;
+    const UINT HEIGHT = 750;
+    HWND hWnd = SetupWindow(hInstance, WIDTH, HEIGHT);
+
+    if (!hWnd) return -1;
+
+    // 2. INITIALIZE RENDERER
+    if (FAILED(g_renderer.Initialize(hWnd, WIDTH, HEIGHT)))
     {
-        std::cout << "[SUCCESS] BASS 64-bit is initialized successfully.\n";
-        BASS_Free(); // Cleanup
-    }
-    else 
-    {
-        std::cout << "[ERROR] BASS could not be initialized. Error Code: " << BASS_ErrorGetCode() << "\n";
+        MessageBox(hWnd, L"Failed to initialize Renderer!", L"Error", MB_OK | MB_ICONERROR);
+        return -1;
     }
 
-    std::cin.get();
-    return 0;
+    // 3. INITIALIZE DANMAKU PIPELINE
+    if (FAILED(g_pipeline.Initialize(g_renderer)))
+    {
+        MessageBox(hWnd, L"Failed to initialize Danmaku Pipeline!", L"Error", MB_OK | MB_ICONERROR);
+        return -1;
+    }
+
+    // 5. GAME LOOP
+
+    MSG msg = {};
+
+    auto prevTime = std::chrono::high_resolution_clock::now();
+    float accumulator = 0.0f;
+
+    while (msg.message != WM_QUIT)
+    {
+        if (PeekMessage(&msg, nullptr, 0, 0, PM_REMOVE))
+        {
+            TranslateMessage(&msg);
+            DispatchMessage(&msg);
+        }
+        else
+        {
+            // ===========================================================================
+            // FIXED TIMESTEP SIMULATION
+            // ===========================================================================
+            auto currentTime = std::chrono::high_resolution_clock::now();
+            float frameTime = std::chrono::duration<float>(currentTime - prevTime).count();
+            prevTime = currentTime; if (frameTime > 0.25f) frameTime = 0.25f; // Avoid deadly long frames
+
+            accumulator += frameTime;
+
+            // ===========================================================================
+            // SIMULATION STEP
+            // ============================================================================
+            const float fixedDeltaTime = 0.016f; // 60 FPS
+
+            while (accumulator >= fixedDeltaTime)
+            {
+                accumulator -= fixedDeltaTime;
+            }
+
+            // ===========================================================================
+            // RENDERING CODE
+            // ===========================================================================
+            g_renderer.BeginFrame();
+            g_renderer.EndFrame();
+        }
+    }
+
+    g_renderer.Shutdown();
+
+    return (int)msg.wParam;
+}
+
+// ============================================================================
+// WINDOW CREATION HELPER (Standard Windows)
+// ============================================================================
+LRESULT CALLBACK WindowProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
+{
+    switch (message)
+    {
+    case WM_KEYDOWN:
+        if (wParam == VK_ESCAPE) PostQuitMessage(0);
+        return 0;
+    case WM_DESTROY:
+        PostQuitMessage(0);
+        return 0;
+    }
+    return DefWindowProc(hWnd, message, wParam, lParam);
+}
+
+HWND SetupWindow(HINSTANCE hInstance, int width, int height)
+{
+    const wchar_t* CLASS_NAME = L"SimulationWindow";
+    WNDCLASSEX wc = {};
+    wc.cbSize = sizeof(WNDCLASSEX);
+    wc.style = CS_HREDRAW | CS_VREDRAW;
+    wc.lpfnWndProc = WindowProc;
+    wc.hInstance = hInstance;
+    wc.hCursor = LoadCursor(nullptr, IDC_ARROW);
+    wc.lpszClassName = CLASS_NAME;
+    RegisterClassEx(&wc);
+
+    RECT rc = { 0, 0, (LONG)width, (LONG)height };
+    AdjustWindowRect(&rc, WS_OVERLAPPEDWINDOW, FALSE);
+
+    HWND hWnd = CreateWindow(CLASS_NAME, L"Squish Engine",
+        WS_OVERLAPPEDWINDOW | WS_VISIBLE,
+        CW_USEDEFAULT, CW_USEDEFAULT,
+        rc.right - rc.left, rc.bottom - rc.top,
+        nullptr, nullptr, hInstance, nullptr);
+
+    return hWnd;
 }

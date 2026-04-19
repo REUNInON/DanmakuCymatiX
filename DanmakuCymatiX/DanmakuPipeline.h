@@ -47,6 +47,8 @@ struct alignas(16) GlobalConstants
 
 class DanmakuPipeline
 {
+public:
+
     static constexpr UINT MAX_BULLETS = 100000;
 
     HRESULT Initialize(Renderer& renderer);

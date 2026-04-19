@@ -236,8 +236,8 @@ HRESULT DanmakuPipeline::CreateGraphicsPSO_(Renderer& renderer)
 	desc.InputLayout = { nullptr, 0 }; // NO VERTEX BUFFER
 
 	// SHADERS
-	desc.VS = { DanmakuVS, sizeof(DanmakuVS) };
-	desc.PS = { DanmakuPS, sizeof(DanmakuPS) };
+	desc.VS = { g_DanmakuVS, sizeof(g_DanmakuVS) };
+	desc.PS = { g_DanmakuPS, sizeof(g_DanmakuPS) };
 
 	// RASTERIZER
 	desc.RasterizerState.FillMode = D3D12_FILL_MODE_SOLID;
