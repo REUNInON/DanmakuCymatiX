@@ -22,7 +22,7 @@ struct alignas(16) BulletGPU
 // GPU Payload
 struct alignas(16) GlobalConstants
 {
-	// Data from Stochastic Engine
+    // Data from Stochastic Engine
     int spawnCount;
     int stateID;
     float chaosFactor;
@@ -33,7 +33,7 @@ struct alignas(16) GlobalConstants
     float spatialSpread;
     float totalTime;
 
-	// Data from the game
+    // Data from the game
     float playerPosX;
     float playerPosY;
 
@@ -41,18 +41,20 @@ struct alignas(16) GlobalConstants
     float grazeRadius;
 };
 
-
 // ==============================================================================
 // PIPELINE CLASS
 // ==============================================================================
 
-class ComputePipeline
+class DanmakuPipeline
 {
-public:
     static constexpr UINT MAX_BULLETS = 100000;
 
     HRESULT Initialize(Renderer& renderer);
     void Shutdown();
+
+#pragma region COMPUTE PIPELINE
+
+public:
 
     void Dispatch(Renderer& renderer, const GlobalConstants& constants);
 
@@ -60,16 +62,33 @@ public:
     ID3D12DescriptorHeap* GetCbvSrvUavHeap() const { return m_cbvSrvUavHeap.Get(); }
 
 private:
-	// Core DX12 Pipeline Components
-    ComPtr<ID3D12RootSignature> m_rootSignature;
-    ComPtr<ID3D12PipelineState> m_pso;
+    ComPtr<ID3D12RootSignature> m_computeRS;
+    ComPtr<ID3D12PipelineState> m_computePSO;
 
-	ComPtr<ID3D12DescriptorHeap> m_cbvSrvUavHeap;
+    ComPtr<ID3D12DescriptorHeap> m_cbvSrvUavHeap;
     UINT m_descriptorSize = 0;
 
-	ComPtr<ID3D12Resource> m_bulletBuffer; // Structured Buffer for Bullet Data (UAV)
+    ComPtr<ID3D12Resource> m_bulletBuffer; // Structured Buffer for Bullet Data (UAV)
 
-    HRESULT CreateRootSignature_(Renderer& renderer);
-    HRESULT CreatePSO_(Renderer& renderer);
+    HRESULT CreateComputeRootSignature_(Renderer& renderer);
+    HRESULT CreateComputePSO_(Renderer& renderer);
     HRESULT CreateBulletBufferAndViews_(Renderer& renderer);
+
+#pragma endregion
+
+#pragma region GRAPHICS PIPELINE
+
+public:
+
+    void Render(Renderer& renderer);
+
+private:
+    ComPtr<ID3D12RootSignature> m_graphicsRS;
+    ComPtr<ID3D12PipelineState> m_graphicsPSO;
+
+    HRESULT CreateGraphicsRootSignature_(Renderer& renderer);
+    HRESULT CreateGraphicsPSO_(Renderer& renderer);
+
+#pragma endregion
 };
+

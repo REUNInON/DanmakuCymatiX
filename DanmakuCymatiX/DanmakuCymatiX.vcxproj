@@ -133,17 +133,22 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
-    <ClCompile Include="ComputePipeline.cpp" />
+    <ClCompile Include="DanmakuPipeline.cpp" />
     <ClCompile Include="Main.cpp" />
     <ClCompile Include="Renderer.cpp" />
     <ClCompile Include="SonicCore.cpp" />
     <ClCompile Include="StochasticEngine.cpp" />
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="ComputePipeline.h" />
+    <ClInclude Include="DanmakuPipeline.h" />
     <ClInclude Include="Renderer.h" />
     <ClInclude Include="SonicCore.h" />
     <ClInclude Include="StochasticEngine.h" />
+  </ItemGroup>
+  <ItemGroup>
+    <FxCompile Include="DanmakuCS.hlsl" />
+    <FxCompile Include="DanmakuPS.hlsl" />
+    <FxCompile Include="DanmakuVS.hlsl" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
