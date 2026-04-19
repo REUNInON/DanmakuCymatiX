@@ -12,6 +12,8 @@ struct StochasticPayload
 	float originX; // Bivariate Gaussian spatial x-coordinate
 	float originY; // Bivariate Gaussian spatial y-coordinate
 	float spatialSpread; // Bivariate Gaussian spread (standard deviation)
+	float deltaTime;
+	float totalTime;
 };
 
 // TODO: Stochastic Engine is not fully agnostic of Sonic Core.
