@@ -1,6 +1,7 @@
 #include <iostream>
 #include "bass.h"
 #include "Renderer.h"
+#include "SonicCore.h"
 #include "StochasticEngine.h"
 #include "DanmakuPipeline.h"
 #include <windows.h>
@@ -9,13 +10,14 @@
 
 // GLOBAL VARIABLES
 Renderer g_renderer;
-StochasticEngine g_physics;
+SonicCore g_sonicCore;
+StochasticEngine g_stochastic;
 DanmakuPipeline g_pipeline;
+
 
 
 // Window Creation Helper
 HWND SetupWindow(HINSTANCE hInstance, int width, int height);
-
 
 // ============================================================================
 // MAIN ENTRY POINT
@@ -36,19 +38,38 @@ int WINAPI wWinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance, 
 
     if (!hWnd) return -1;
 
-    // 2. INITIALIZE RENDERER
+	// 2. INITIALIZE SONIC CORE
+
+    if (!g_sonicCore.Initialize())
+    {
+        MessageBox(hWnd, L"Failed to initialize Sonic Core!", L"Error", MB_OK | MB_ICONERROR);
+        return -1;
+	}
+
+    if (!g_sonicCore.LoadAudio("audio.mp3"))
+    {
+        MessageBox(hWnd, L"Failed to load audio file!", L"Error", MB_OK | MB_ICONERROR);
+        return -1;
+	}
+
+	g_sonicCore.Play(); // START THE JAM!
+
+
+    // 3. INITIALIZE RENDERER
     if (FAILED(g_renderer.Initialize(hWnd, WIDTH, HEIGHT)))
     {
         MessageBox(hWnd, L"Failed to initialize Renderer!", L"Error", MB_OK | MB_ICONERROR);
         return -1;
     }
 
-    // 3. INITIALIZE DANMAKU PIPELINE
+    // 4. INITIALIZE DANMAKU PIPELINE
     if (FAILED(g_pipeline.Initialize(g_renderer)))
     {
         MessageBox(hWnd, L"Failed to initialize Danmaku Pipeline!", L"Error", MB_OK | MB_ICONERROR);
         return -1;
     }
+
+	g_stochastic.Initialize(1337);
 
     // 5. GAME LOOP
 
@@ -56,6 +77,15 @@ int WINAPI wWinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance, 
 
     auto prevTime = std::chrono::high_resolution_clock::now();
     float accumulator = 0.0f;
+	float totalTime = 0.0f; // For sin/cos waves in bullet patterns
+
+	// DEFINE GPU CONSTANTS STRUCTURE
+	GlobalConstants constants = {};
+
+	constants.originX = 0.0f;
+	constants.originY = 0.0f;
+    constants.hitRadius = 5.0f;
+	constants.grazeRadius = 15.0f;
 
     while (msg.message != WM_QUIT)
     {
@@ -74,6 +104,7 @@ int WINAPI wWinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance, 
             prevTime = currentTime; if (frameTime > 0.25f) frameTime = 0.25f; // Avoid deadly long frames
 
             accumulator += frameTime;
+			totalTime += frameTime;
 
             // ===========================================================================
             // SIMULATION STEP
@@ -82,13 +113,33 @@ int WINAPI wWinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance, 
 
             while (accumulator >= fixedDeltaTime)
             {
+				g_sonicCore.Tick();
+
+                StochasticPayload payload = g_stochastic.ProcessAudioFrame
+                (
+                    0, 0,
+                    1.0f, 1.0f,
+                    g_sonicCore.GetRawSpectrum()
+				);
+
+				constants.chaosFactor = payload.chaosFactor;
+
                 accumulator -= fixedDeltaTime;
             }
 
             // ===========================================================================
             // RENDERING CODE
             // ===========================================================================
+
+			constants.deltaTime = frameTime;
+			constants.totalTime = totalTime;
+
+
             g_renderer.BeginFrame();
+            g_pipeline.Dispatch(g_renderer, constants);
+			g_renderer.IssueBarrier(g_renderer.GetCommandList(), g_pipeline.GetBulletBuffer(), D3D12_RESOURCE_STATE_UNORDERED_ACCESS, D3D12_RESOURCE_STATE_VERTEX_AND_CONSTANT_BUFFER);
+			g_pipeline.Render(g_renderer);
+			g_renderer.IssueBarrier(g_renderer.GetCommandList(), g_pipeline.GetBulletBuffer(), D3D12_RESOURCE_STATE_VERTEX_AND_CONSTANT_BUFFER, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
             g_renderer.EndFrame();
         }
     }

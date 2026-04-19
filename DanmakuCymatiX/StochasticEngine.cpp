@@ -10,7 +10,13 @@ void StochasticEngine::Initialize(unsigned int seed)
 
 StochasticPayload StochasticEngine::ProcessAudioFrame(float muX, float muY, float poissonMultiplier, float gaussMultiplier, const std::array<float, SonicCore::SPECTRUM_SIZE>& spectrum)
 {
-	return StochasticPayload();
+	StochasticPayload payload = {};
+
+	// MVP: ONLY CHAOS FACTOR FOR NOW
+
+	payload.chaosFactor = CalculateEntropy(spectrum);
+
+	return payload;
 }
 
 int StochasticEngine::CalculatePoisson(float lambda)

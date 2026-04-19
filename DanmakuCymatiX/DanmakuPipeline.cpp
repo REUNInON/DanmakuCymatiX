@@ -25,10 +25,44 @@ HRESULT DanmakuPipeline::Initialize(Renderer& renderer)
 
 void DanmakuPipeline::Dispatch(Renderer& renderer, const GlobalConstants& constants)
 {
+	auto cmdList = renderer.GetCommandList();
+
+	// 1. Set Compute Root Signature and Pipeline State
+	cmdList->SetComputeRootSignature(m_computeRS.Get());
+	cmdList->SetPipelineState(m_computePSO.Get());
+
+	// 2. Slot 0: Set Global Constants (b0)
+	cmdList->SetComputeRoot32BitConstants(0, sizeof(GlobalConstants) / 4, &constants, 0);
+
+	// 3. Slot 1: Set UAV Buffer (u0)
+	cmdList->SetComputeRootUnorderedAccessView(1, m_bulletBuffer->GetGPUVirtualAddress());
+
+	// 4. Dispatch Compute Shader
+	cmdList->Dispatch(391, 1, 1); // 256 Threads per group: 100k / 256 = 391 groups
 }
 
 void DanmakuPipeline::Render(Renderer& renderer)
 {
+	auto cmdList = renderer.GetCommandList();
+
+	// 1. Set Graphics Root Signature and Pipeline State
+	cmdList->SetGraphicsRootSignature(m_graphicsRS.Get());
+	cmdList->SetPipelineState(m_graphicsPSO.Get());
+
+	// 4. Set Primitive Topology
+	cmdList->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
+
+	// 3. Slot 0: Set View/Projection Constants (b0)
+	float screenDimensions[2] = { static_cast<float>(renderer.Width()), static_cast<float>(renderer.Height()) };
+	cmdList->SetGraphicsRoot32BitConstants(0, 2, screenDimensions, 0);
+
+	// 4. Slot 1: Set SRV Buffer (t0)
+	cmdList->SetGraphicsRootShaderResourceView(1, m_bulletBuffer->GetGPUVirtualAddress());
+
+	// 5. Draw Call!!
+
+	cmdList->DrawInstanced(6, MAX_BULLETS, 0, 0);
+
 }
 
 void DanmakuPipeline::Shutdown()

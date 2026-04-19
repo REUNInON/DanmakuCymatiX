@@ -3,7 +3,7 @@
 struct VS_OUTPUT
 {
     float4 position : SV_POSITION;
-    float uv : TEXCOORD0;
+    float2 uv : TEXCOORD0;
 };
 
 float4 main(VS_OUTPUT input) : SV_TARGET
@@ -15,10 +15,10 @@ float4 main(VS_OUTPUT input) : SV_TARGET
     float distance = length(center);
     
     // 3. Bullet Core, Anti-Aliased Edge
-    float core = smoothstep(0.9, 0.7, distance); // < 0.7 opaque, > 0.9 transparent
+    float core = smoothstep(0.1, 0.01, distance); // < 0.7 opaque, > 0.9 transparent
     
     // 4. Glow Effect (Outer Ring)
-    float glow = exp(-distance * 3.0); // Exponential decay for glow
+    float glow = exp(-distance * 3.0) * 1.0; // Exponential decay for glow
     
     // MVP: COLOR IS FIXED FOR NOW!!
     // float4 color = float4(core + glow, core + glow, core + glow, 1.0);
@@ -28,6 +28,8 @@ float4 main(VS_OUTPUT input) : SV_TARGET
     float3 finalColor = (baseColor * glow) + (float3(1.0, 1.0, 1.0) * core); // Modulate color by core and glow
     
     float alpha = 1.0 - smoothstep(0.95, 1.0, distance); // Alpha based on distance for anti-aliasing
+    
+    finalColor *= alpha; // Modulate final color by alpha for smooth edges
     
     return float4(finalColor, alpha);
 }
