@@ -118,12 +118,12 @@ int WINAPI wWinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance, 
             {
 				g_sonicCore.Tick();
 
-				float bassEnergy = g_sonicCore.GetBandEnergy(AudioBand::Midrange);
+				float bassEnergy = g_sonicCore.GetBandEnergy(AudioBand::SubBass);
 
-				float trebleEnergy = g_sonicCore.GetBandEnergy(AudioBand::Bass);
+				float trebleEnergy = g_sonicCore.GetBandEnergy(AudioBand::Presence);
 
 
-				float dynamicSpawnRate = 1.0f + (bassEnergy * 1500.0f); // Base rate + scaled by bass energy
+				float dynamicSpawnRate = 0.0f + (bassEnergy * 50.0f); // Base rate + scaled by bass energy
 
                 StochasticPayload payload = g_stochastic.ProcessAudioFrame
                 (

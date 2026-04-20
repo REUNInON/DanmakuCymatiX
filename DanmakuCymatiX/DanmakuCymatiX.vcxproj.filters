@@ -49,13 +49,13 @@
     </ClInclude>
   </ItemGroup>
   <ItemGroup>
-    <FxCompile Include="DanmakuCS.hlsl">
-      <Filter>Shaders</Filter>
-    </FxCompile>
     <FxCompile Include="DanmakuVS.hlsl">
       <Filter>Shaders</Filter>
     </FxCompile>
     <FxCompile Include="DanmakuPS.hlsl">
+      <Filter>Shaders</Filter>
+    </FxCompile>
+    <FxCompile Include="DanmakuCS.hlsl">
       <Filter>Shaders</Filter>
     </FxCompile>
   </ItemGroup>
