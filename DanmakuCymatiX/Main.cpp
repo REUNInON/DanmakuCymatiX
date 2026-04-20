@@ -5,6 +5,7 @@
 #include "StochasticEngine.h"
 #include "DanmakuPipeline.h"
 #include <windows.h>
+#include <algorithm>
 
 #include <chrono>
 
@@ -32,8 +33,8 @@ int WINAPI wWinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance, 
     FILE* stream; freopen_s(&stream, "CONOUT$", "w", stdout);
 
     // 1. OPEN WINDOW
-    const UINT WIDTH = 750;
-    const UINT HEIGHT = 750;
+    const UINT WIDTH = 1080;
+    const UINT HEIGHT = 720;
     HWND hWnd = SetupWindow(hInstance, WIDTH, HEIGHT);
 
     if (!hWnd) return -1;
@@ -87,6 +88,8 @@ int WINAPI wWinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance, 
     constants.hitRadius = 5.0f;
 	constants.grazeRadius = 15.0f;
 
+    uint32_t currentSpawnIndex = 0; // For ring buffer of bullets (Poisson)
+
     while (msg.message != WM_QUIT)
     {
         if (PeekMessage(&msg, nullptr, 0, 0, PM_REMOVE))
@@ -115,14 +118,26 @@ int WINAPI wWinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance, 
             {
 				g_sonicCore.Tick();
 
+				float bassEnergy = g_sonicCore.GetBandEnergy(AudioBand::Midrange);
+
+				float trebleEnergy = g_sonicCore.GetBandEnergy(AudioBand::Bass);
+
+
+				float dynamicSpawnRate = 1.0f + (bassEnergy * 1500.0f); // Base rate + scaled by bass energy
+
                 StochasticPayload payload = g_stochastic.ProcessAudioFrame
                 (
                     0, 0,
-                    1.0f, 1.0f,
+                    dynamicSpawnRate, 1.0f,
                     g_sonicCore.GetRawSpectrum()
 				);
 
-				constants.chaosFactor = payload.chaosFactor;
+				constants.chaosFactor = payload.chaosFactor + (trebleEnergy * 15.0f);
+
+				// POISSON SPAWN COUNT AND RING BUFFER INDEXING
+				constants.spawnCount = payload.spawnCount;
+				constants.spawnStartIndex = currentSpawnIndex;
+				currentSpawnIndex = (currentSpawnIndex + payload.spawnCount) % DanmakuPipeline::MAX_BULLETS;
 
                 accumulator -= fixedDeltaTime;
             }

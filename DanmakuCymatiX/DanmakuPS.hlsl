@@ -15,15 +15,15 @@ float4 main(VS_OUTPUT input) : SV_TARGET
     float distance = length(center);
     
     // 3. Bullet Core, Anti-Aliased Edge
-    float core = smoothstep(0.1, 0.01, distance); // < 0.7 opaque, > 0.9 transparent
+    float core = smoothstep(0.1, 0.01, distance); // < 0.1 opaque, > 0.02 transparent
     
     // 4. Glow Effect (Outer Ring)
-    float glow = exp(-distance * 3.0) * 1.0; // Exponential decay for glow
+    float glow = exp(-distance * 5.0) * 0.5; // Exponential decay for glow
     
     // MVP: COLOR IS FIXED FOR NOW!!
-    // float4 color = float4(core + glow, core + glow, core + glow, 1.0);
+    //float4 color = float4(core + glow, core + glow, core + glow, 1.0);
     
-    float3 baseColor = float3(1.0, 0.5, 0.0); // Orange color for the bullet
+    float3 baseColor = float3(1.0, 0.25, 0.6); // Pink color for the bullet
     
     float3 finalColor = (baseColor * glow) + (float3(1.0, 1.0, 1.0) * core); // Modulate color by core and glow
     

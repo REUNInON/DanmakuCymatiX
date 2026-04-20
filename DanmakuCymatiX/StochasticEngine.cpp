@@ -12,9 +12,11 @@ StochasticPayload StochasticEngine::ProcessAudioFrame(float muX, float muY, floa
 {
 	StochasticPayload payload = {};
 
-	// MVP: ONLY CHAOS FACTOR FOR NOW
+	// TODO: Map everything!!
 
 	payload.chaosFactor = CalculateEntropy(spectrum);
+
+	payload.spawnCount = CalculatePoisson(poissonMultiplier);
 
 	return payload;
 }

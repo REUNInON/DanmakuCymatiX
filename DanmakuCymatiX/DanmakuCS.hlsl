@@ -5,6 +5,7 @@
 cbuffer GlobalConstants : register(b0)
 {
     int spawnCount;
+    uint spawnStartIndex;
     int stateID;
     float chaosFactor;
     float deltaTime;
@@ -51,42 +52,59 @@ void main(uint3 DTid : SV_DispatchThreadID)
     // 1. Read the bullet from the VRAM
     BulletGPU bullet = Bullets[index];
     
-    // 2. Skip if the bullet is dead (CHANGED FOR THE MVP)
-    if (bullet.state == 0)
+    // Poisson
+    uint diff = (index - spawnStartIndex + 100000) % 100000;
+    
+    bool shouldSpawn = (diff < spawnCount);
+    
+    if (shouldSpawn)
     {
-        // MVP: DETERMINE IF NEEDED
-        //float wakeUpTime = float(index) * 0.0001f;
-        //if (totalTime < wakeUpTime)
-        //    return;
+        bullet.state = 1;
         
-        bullet.state = 1; // Mark as alive
-        bullet.posX = originX;
-        bullet.posY = originY;
-        //float angle = float(index) * 0.137f; // MVP: ANGLE BASED ON INDEX FOR NOW
-
-        float speed = 1.0f + (float(index) % 100) * 0.005f;
-
-        //bullet.velX = cos(angle) * speed;
-        //bullet.velY = sin(angle) * speed;
+        bullet.posX = originX + (sin(totalTime * 1.3f) * 0.5f) + (cos(totalTime * 0.7f) * 0.3f);
+                
+        bullet.posY = 0.5f + (sin(totalTime * 2.2f) * 0.05f);
         
-        bullet.baseRadius = 0.01f;
+        float streamCount = 15.0f;
+        float streamID = float(index % int(streamCount));
+        float angleOffset = ((streamID / streamCount) - 0.5f) * 1.5f; // varying spread
+        float angle = -1.5708f + angleOffset + sin(totalTime * 1.0f) * 1.0f;
         
+        
+        float speed = 1.4f + (float(index % 5) * 0.01f);
+        
+        if (stateID == 0)
+        {
+            // STATE 0: NORMAL
+            float streamCount = 15.0f;
+            float streamID = float(index % int(streamCount));
+            float angleOffset = ((streamID / streamCount) - 0.5f) * 1.5f; // varying spread
+            angle += /*angleOffset + */sin(totalTime * 1.0f) * 1.0f;
+        }
+        
+        bullet.velX = cos(angle) * speed;
+        bullet.velY = sin(angle) * speed;
+        bullet.baseRadius = 0.1f;
         
         Bullets[index] = bullet;
         return;
     }
+    
+    // 2. Skip if the bullet is dead (CHANGED FOR THE MVP)
+    if (bullet.state == 0)
+        return;
     
     // MVP: BASIC PHYSICS FOR NOW (d = v * t)
     bullet.posX += bullet.velX * deltaTime;
     bullet.posY += bullet.velY * deltaTime;
 
     // MVP: BASIC STOCHASTIC INFLUENCE (CHAOS FACTOR)
-    bullet.posX += sin(totalTime * 10.0 + index) * chaosFactor * deltaTime * 5.5;
-    bullet.posY += cos(totalTime * 10.0 + index) * chaosFactor * deltaTime * 5.5;
+    bullet.posX += cos(totalTime * 10.0 + index) * chaosFactor * deltaTime * 1.5;
+    bullet.posY += sin(totalTime * 10.0 + index) * chaosFactor * deltaTime * 1.5;
     
     if (abs(bullet.posX) > 2.0f || abs(bullet.posY) > 2.0f)
     {
-        bullet.state = 0; // Mermi öldü! Bir sonraki frame fabrikada merkezde yeniden doğacak.
+        bullet.state = 0;
     }
     
     // 5. Write the updated bullet back to the VRAM

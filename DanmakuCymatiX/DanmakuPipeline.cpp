@@ -297,6 +297,7 @@ HRESULT DanmakuPipeline::CreateGraphicsPSO_(Renderer& renderer)
 	desc.DepthStencilState.StencilEnable = FALSE;
 
 	// TOPOLOGY
+	// TODO: Use primitive topology type triangle strip for micro-optimization.
 	desc.PrimitiveTopologyType = D3D12_PRIMITIVE_TOPOLOGY_TYPE_TRIANGLE;
 
 	// RENDER TARGET FORMATS

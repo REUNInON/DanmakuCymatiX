@@ -22,8 +22,9 @@ struct alignas(16) BulletGPU
 // GPU Payload
 struct alignas(16) GlobalConstants
 {
-    // Data from Stochastic Engine
+	// Data from Stochastic Engine
     int spawnCount;
+	uint32_t spawnStartIndex; // For the ring buffer of bullets (Poisson distribution)
     int stateID;
     float chaosFactor;
     float deltaTime;
@@ -39,6 +40,8 @@ struct alignas(16) GlobalConstants
 
     float hitRadius;
     float grazeRadius;
+
+    
 };
 
 // ==============================================================================
