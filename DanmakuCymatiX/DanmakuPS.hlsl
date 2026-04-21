@@ -51,7 +51,7 @@ float4 main(VS_OUTPUT input) : SV_TARGET
     
     float3 finalColor = (baseColor * glow) + (float3(0.0, 1.0, 0.2) * core); // Modulate color by core and glow
     
-    float alpha = 1.0 - smoothstep(0.95, 1.0, distance); // Alpha based on distance for anti-aliasing
+    float alpha = 0.5 - smoothstep(0.95, 1.0, distance); // Alpha based on distance for anti-aliasing
     
     finalColor *= alpha; // Modulate final color by alpha for smooth edges
     

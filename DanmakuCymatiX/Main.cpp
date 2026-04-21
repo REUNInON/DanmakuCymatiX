@@ -118,9 +118,15 @@ int WINAPI wWinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance, 
             {
 				g_sonicCore.Tick();
 
-				float bassEnergy = g_sonicCore.GetBandEnergy(AudioBand::Bass);
+				// Get all band energies for use in patterns and spawn rates
 
-				float trebleEnergy = g_sonicCore.GetBandEnergy(AudioBand::Presence);
+				float subBassEnergy = g_sonicCore.GetBandEnergy(AudioBand::SubBass);
+				float bassEnergy = g_sonicCore.GetBandEnergy(AudioBand::Bass);
+				float lowMidEnergy = g_sonicCore.GetBandEnergy(AudioBand::LowerMids);
+				float midEnergy = g_sonicCore.GetBandEnergy(AudioBand::Midrange);
+				float highMidEnergy = g_sonicCore.GetBandEnergy(AudioBand::HigherMids);
+				float presenceEnergy = g_sonicCore.GetBandEnergy(AudioBand::Presence);
+				float brillianceEnergy = g_sonicCore.GetBandEnergy(AudioBand::Brilliance);
 
 				float band1Energy = g_sonicCore.GetBandEnergy(AudioBand::Bass);
 				float band2Energy = g_sonicCore.GetBandEnergy(AudioBand::LowerMids);
@@ -130,9 +136,11 @@ int WINAPI wWinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance, 
 				constants.band2 = band2Energy;
 				constants.band3 = band3Energy;
 
-				float dynamicSpawnRate = 0.0f + (band2Energy * 25.0f); // Base rate + scaled by bass energy
+				float dynamicSpawnRate = bassEnergy *  50.0f + ((midEnergy + presenceEnergy) * 10.0f);
 
-				float bossRoamRadius = 0.2f + (trebleEnergy * 35.0f);
+				//float dynamicSpawnRate = 0.0f + (band3Energy * 25.0f); // Base rate + scaled by band energy
+
+				float bossRoamRadius = 0.2f + (midEnergy * 55.0f);
 
                 static float patternCooldown = 0.0f;
                 static int currentPattern = 4;
@@ -148,16 +156,16 @@ int WINAPI wWinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance, 
 
                 StochasticPayload payload = g_stochastic.ProcessAudioFrame
                 (
-                    0.0f, 0.9f,
+                    0.0f, 0.7f,
                     dynamicSpawnRate, bossRoamRadius,
                     g_sonicCore.GetRawSpectrum()
 				);
 
 				constants.chaosFactor = payload.chaosFactor + (band2Energy * 5.0f);
 
-                constants.spatialSpread = 1.2f + (trebleEnergy * 8.0f);
+                constants.spatialSpread = 1.2f + (midEnergy * 1.0f);
 
-                float bossSpeed = 1.5f + (band1Energy * 15.0f);
+                float bossSpeed = 1.5f + (band3Energy * 25.0f);
 
                 constants.originX += (payload.originX - constants.originX) * bossSpeed * fixedDeltaTime;
                 constants.originY += (payload.originY - constants.originY) * bossSpeed * fixedDeltaTime;
@@ -180,9 +188,9 @@ int WINAPI wWinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance, 
 
             g_renderer.BeginFrame();
             g_pipeline.Dispatch(g_renderer, constants);
-			g_renderer.IssueBarrier(g_renderer.GetCommandList(), g_pipeline.GetBulletBuffer(), D3D12_RESOURCE_STATE_UNORDERED_ACCESS, D3D12_RESOURCE_STATE_VERTEX_AND_CONSTANT_BUFFER);
+			g_renderer.IssueBarrier(g_renderer.GetCommandList(), g_pipeline.GetBulletBuffer(), D3D12_RESOURCE_STATE_UNORDERED_ACCESS, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
 			g_pipeline.Render(g_renderer);
-			g_renderer.IssueBarrier(g_renderer.GetCommandList(), g_pipeline.GetBulletBuffer(), D3D12_RESOURCE_STATE_VERTEX_AND_CONSTANT_BUFFER, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
+			g_renderer.IssueBarrier(g_renderer.GetCommandList(), g_pipeline.GetBulletBuffer(), D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
             g_renderer.EndFrame();
         }
     }

@@ -57,7 +57,7 @@ void PatternNWaySpiral(uint index, float t, float b3, out float angle, out float
     float baseAngle = (streamID / streamCount) * 6.28318f;
     float spinSpeed = 2.0f + (b3 * 5.0f);
     angle = baseAngle + (t * spinSpeed);
-    speed = 0.15f;
+    speed = 1.0f;
 }
 
 // The Sweeper: A fan of streams swaying left and right. Sway width scales with Bass (band1).
@@ -68,7 +68,7 @@ void PatternSweeper(uint index, float t, float b1, out float angle, out float sp
     float fanAngle = -1.5708f - 1.0f + (streamID * 0.4f);
     float swayAmount = 1.0f + (b1 * 2.0f);
     angle = fanAngle + sin(t * 3.0f) * swayAmount;
-    speed = 0.3f;
+    speed = 0.5f;
 }
 
 // Golden Ratio: Sunflower seed distribution forming a mesmerizing spiral.
@@ -76,7 +76,7 @@ void PatternGoldenRatio(uint index, float t, out float angle, out float speed)
 {
     float goldenAngle = 2.39996f;
     angle = float(index) * goldenAngle + (t * 1.5f);
-    speed = 0.1f + (float(index % 100) * 0.005f);
+    speed = 0.25f /*+ (float(index % 100) * 0.5f)*/;
 }
 
 // Audio-Reactive Nova: 360-degree bursts. Burst speed scales heavily with Bass (band1).
@@ -85,7 +85,7 @@ void PatternAudioNova(uint index, float b1, out float angle, out float speed)
     float bulletsPerRing = 32.0f;
     float ringIndex = float(index % int(bulletsPerRing));
     angle = (ringIndex / bulletsPerRing) * 6.28318f;
-    speed = 0.05f + (b1 * 0.75f);
+    speed = 0.1f + (b1 * 0.75f);
 }
 
 // Classic Shotgun: Pure Box-Muller Gaussian spread downwards.
@@ -93,8 +93,7 @@ void PatternClassicShotgun(float spread, float b2, float z0, float z1, out float
 {
     float baseAngle = -1.5708f;
     angle = baseAngle + (z0 * spread);
-    //speed = 1.0f + (z1 * 0.05f) + (b2 * 2.5f);
-    speed = 0.5f + (z1 * 0.02f);
+    speed = 0.5f + (z1 * 0.02f) + (b2 * 2.5f);
 }
 
 
@@ -163,7 +162,12 @@ void main(uint3 DTid : SV_DispatchThreadID)
         bullet.velX = cos(angle) * speed;
         bullet.velY = sin(angle) * speed;
         
-        bullet.baseRadius = 0.1f + (band1 * 15.0f) * chaosFactor * deltaTime;
+        
+        // DENSITY BASED RADIUS
+        float safeSpawnCount = max(1.0f, float(spawnCount));
+        float poissonScale = 10.0f / safeSpawnCount;
+        poissonScale = clamp(poissonScale, 0.2f, 4.0f);
+        bullet.baseRadius = (0.05f + (band1 * 0.5f) * chaosFactor) * poissonScale;
         
         Bullets[index] = bullet;
         return;
@@ -174,10 +178,22 @@ void main(uint3 DTid : SV_DispatchThreadID)
         return;
     
     // 3. Linear Physics
-    float airSpeedMultiplier = 0.35f + (band1 * 75.0f);
+    
+    float totalEnergy = band1 + band2 + band3;
+    float airSpeedMultiplier = 1.5f + pow(totalEnergy, 2.0f) * 3.0f;
     
     bullet.posX += bullet.velX * airSpeedMultiplier * deltaTime;
     bullet.posY += bullet.velY * airSpeedMultiplier * deltaTime;
+    
+    float jitterAmount = band1 * 0.75f;
+    bullet.posX += sin(totalTime * 50.0f + index) * jitterAmount * deltaTime;
+    bullet.posY += cos(totalTime * 43.0f + index) * jitterAmount * deltaTime;
+    
+    float2 toCenter = float2(originX - bullet.posX, originY - bullet.posY);
+    float2 tangent = float2(-toCenter.y, toCenter.x);
+    float vortexStrength = band2 * 0.5f;
+    bullet.posX += tangent.x * vortexStrength * deltaTime;
+    bullet.posY += tangent.y * vortexStrength * deltaTime;
 
     // 4. Kill boundary
     if (abs(bullet.posX) > 2.0f || abs(bullet.posY) > 2.0f)
