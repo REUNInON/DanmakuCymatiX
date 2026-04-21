@@ -1,7 +1,3 @@
-// ===============================================================
-// DATA STRUCTS
-// ===============================================================
-
 cbuffer GlobalConstants : register(b0)
 {
     int spawnCount;
@@ -88,16 +84,23 @@ void main(uint3 DTid : SV_DispatchThreadID)
         float z0 = sqrt(-2.0f * log(u1)) * cos(6.28318f * u2); // Box-Mueller
         float z1 = sqrt(-2.0f * log(u1)) * sin(6.28318f * u2);
         
-        float baseAngle = -1.5708f; // Directly downwards
-        float angle = baseAngle + (z0 * spatialSpread);
+        float sway = sin(totalTime * (1.5f + chaosFactor)) * 0.7f;
+        
+        float baseAngle = -1.5708f + sway; // Directly downwards
+        //float angle = baseAngle + (z0 * spatialSpread);
        
+        float streamCount = 5.0f;
+        float streamID = float(index % int(streamCount));
+        float baseStreamAngle = baseAngle - 0.6f + (streamID / (streamCount - 1.0f)) * 1.2f;
+        
+        float angle = baseStreamAngle + (z0 * spatialSpread * 0.1f);
+        
         float speed = 0.5f + (z1 * 0.05f) + (band2 * 2.5f);
-        bullet.baseRadius = 0.1f + (band1 * 0.1f) * chaosFactor;
+        bullet.baseRadius = 0.1f + (band1 * 2.0f) * chaosFactor * deltaTime;
         
         // ===============================================
         // SPAWNER END
         // ===============================================
-        
         if (stateID == 0)
         {
             // STATE 0
@@ -107,10 +110,7 @@ void main(uint3 DTid : SV_DispatchThreadID)
             float angleOffset = ((streamID / streamCount) - 0.5f) * 1.6f;
             angle += angleOffset + sin(totalTime * 1.0f) * 0.3f;
             */
-            //bullet.baseRadius = 0.25f * chaosFactor;
             
-            bullet.velX = cos(angle) * speed * band2;
-            bullet.velY = sin(angle) * speed + band2;
         }
         else if (stateID == 1)
         {
@@ -126,11 +126,21 @@ void main(uint3 DTid : SV_DispatchThreadID)
         }
         else
         {
-            // STATE 2: KAOTiK DROP (Death Blossom )
-            angle += float(index) * 2.39996f + (totalTime * 4.0f);
+            // STATE 2: CYMATIC FLOWER
             
-            speed = 0.5f + (chaosFactor * 0.08f);
-            bullet.baseRadius = 0.1f;
+            // Golden Ratio
+            angle = float(index) * 2.39996f + (totalTime * 2.0f);
+            
+            // Flower Petals
+            float petalCount = 5.0f;
+            
+            float petalShape = abs(sin(angle * petalCount));
+            
+            speed = 0.03f + (petalShape * 0.8f);
+            
+            speed += (band1 * 0.5f);
+            
+            bullet.baseRadius = 0.1f + (petalShape * 0.05f);
         }
 
         bullet.velX = cos(angle) * speed;
@@ -141,23 +151,19 @@ void main(uint3 DTid : SV_DispatchThreadID)
         Bullets[index] = bullet;
         return;
     }
-    
-    // 2. Skip if the bullet is dead (CHANGED FOR THE MVP)
+    // 2. Skip if the bullet is dead
     if (bullet.state == 0)
         return;
     
-    float airSpeedMultiplier = 1.0f + (band2 * 15.0f);
+    float airSpeedMultiplier = 0.5f + (band2 * 50.0f);
+    
     bullet.posX += bullet.velX * airSpeedMultiplier * deltaTime;
     bullet.posY += bullet.velY * airSpeedMultiplier * deltaTime;
 
-    // MVP: BASIC STOCHASTIC INFLUENCE (CHAOS FACTOR)
-    //bullet.posX += cos(totalTime * 10.0 + index) * chaosFactor * deltaTime * 0.2;
-    //bullet.posY += sin(totalTime * 10.0 + index) * chaosFactor * deltaTime * 0.2;
-    
-    if (abs(bullet.posX) > 2.0f || abs(bullet.posY) > 2.0f)
-    {
+   if (abs(bullet.posX) > 2.0f || abs(bullet.posY) > 2.0f)
+   {
         bullet.state = 0;
-    }
+   }
     
     // 5. Write the updated bullet back to the VRAM
     Bullets[index] = bullet;
