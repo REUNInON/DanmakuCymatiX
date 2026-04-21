@@ -134,7 +134,7 @@ void main(uint3 DTid : SV_DispatchThreadID)
         float angle = 0.0f;
         float speed = 0.0f;
         
-        int pattern = (int)chaosFactor;
+        int pattern = (int)(chaosFactor * 1.2f);
 
         if (pattern == 0)
         {
@@ -160,7 +160,7 @@ void main(uint3 DTid : SV_DispatchThreadID)
         bullet.velX = cos(angle) * speed;
         bullet.velY = sin(angle) * speed;
         
-        bullet.baseRadius = 0.1f + (band1 * 2.0f) * chaosFactor * deltaTime;
+        bullet.baseRadius = 0.1f + (band1 * 4.0f) * chaosFactor * deltaTime;
         
         Bullets[index] = bullet;
         return;
