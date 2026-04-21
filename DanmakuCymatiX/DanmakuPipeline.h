@@ -23,10 +23,11 @@ struct alignas(16) BulletGPU
 struct alignas(16) GlobalConstants
 {
 	// Data from Stochastic Engine
-    int spawnCount;
+	uint32_t packedStateAndSpawn; // 16 bits for state ID, 16 bits for spawn count (Bit Packing). Spawn Limit: 65535 per Frame
 	uint32_t spawnStartIndex; // For the ring buffer of bullets (Poisson distribution)
-    int stateID;
+    float sweepFactor;
     float chaosFactor;
+
     float deltaTime;
 
     float originX;

@@ -7,6 +7,7 @@ StochasticEngine::StochasticEngine()
 
 void StochasticEngine::Initialize(unsigned int seed)
 {
+	m_rng.seed(seed);
 }
 
 StochasticPayload StochasticEngine::ProcessAudioFrame(float muX, float muY, float poissonMultiplier, float gaussMultiplier, const std::array<float, SonicCore::SPECTRUM_SIZE>& spectrum)
@@ -18,8 +19,8 @@ StochasticPayload StochasticEngine::ProcessAudioFrame(float muX, float muY, floa
 	payload.chaosFactor = CalculateEntropy(spectrum);
 
 
-	unsigned int audioSeed = static_cast<unsigned int>(payload.chaosFactor * 13371337.0f) ^ static_cast<unsigned int>(poissonMultiplier * 1000.0f);
-	m_rng.seed(audioSeed);
+	//unsigned int audioSeed = static_cast<unsigned int>(payload.chaosFactor * 13371337.0f) ^ static_cast<unsigned int>(poissonMultiplier * 1000.0f);
+	//m_rng.seed(audioSeed);
 
 	payload.spawnCount = CalculatePoisson(poissonMultiplier);
 

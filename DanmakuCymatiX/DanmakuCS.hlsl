@@ -1,8 +1,8 @@
 cbuffer GlobalConstants : register(b0)
 {
-    int spawnCount;
-    uint spawnStartIndex;
-    int stateID;
+    uint packedStateAndSpawn; // 16 bits for state ID, 16 bits for spawn count (Bit Packing). Spawn Limit: 65535 per Frame
+    uint spawnStartIndex; // For the ring buffer of bullets (Poisson distribution)
+    float sweepFactor;
     float chaosFactor;
     float deltaTime;
 
@@ -76,7 +76,7 @@ void PatternGoldenRatio(uint index, float t, out float angle, out float speed)
 {
     float goldenAngle = 2.39996f;
     angle = float(index) * goldenAngle + (t * 1.5f);
-    speed = 0.25f /*+ (float(index % 100) * 0.5f)*/;
+    speed = 0.02f + (float(index % 100) * 0.005f);
 }
 
 // Audio-Reactive Nova: 360-degree bursts. Burst speed scales heavily with Bass (band1).
@@ -111,6 +111,30 @@ void main(uint3 DTid : SV_DispatchThreadID)
 
     // 1. Read the bullet from the VRAM
     BulletGPU bullet = Bullets[index];
+    
+    // ===============================================================
+    // PLAYER MOVEMENT SCOPE-FRIENDLY HACK
+    // ===============================================================
+    if (index == 99999)
+    {
+        bullet.state = 1; // UNDYING
+        
+        bullet.posX = playerPosX;
+        bullet.posY = playerPosY;
+        
+        // NO FORCE APPLIED, PLAYER IS CONTROLLED EXTERNALLY
+        bullet.velX = 0.0f;
+        bullet.velY = 0.0f;
+        
+        // SIZE
+        bullet.baseRadius = 0.6f;
+        
+        Bullets[index] = bullet;
+        return;
+    }
+    
+    uint spawnCount = packedStateAndSpawn & 0xFFFF; // Lower 16 bits for spawnCount
+    uint stateID = (packedStateAndSpawn >> 16); // Upper 16 bits for stateID
     
     // Poisson
     uint diff = (index - spawnStartIndex + 100000) % 100000;
@@ -164,36 +188,51 @@ void main(uint3 DTid : SV_DispatchThreadID)
         
         
         // DENSITY BASED RADIUS
-        float safeSpawnCount = max(1.0f, float(spawnCount));
-        float poissonScale = 10.0f / safeSpawnCount;
-        poissonScale = clamp(poissonScale, 0.2f, 4.0f);
-        bullet.baseRadius = (0.05f + (band1 * 0.5f) * chaosFactor) * poissonScale;
+        
+        float densityRatio = saturate(abs(band1 * 5.0f));
+        float spawnRadius = lerp(0.4f, 0.05f, densityRatio);
+        bullet.baseRadius = spawnRadius;
+        
+        bullet.spikes = spawnRadius;
         
         Bullets[index] = bullet;
         return;
     }
-    
     // 2. Skip if the bullet is dead
     if (bullet.state == 0)
         return;
     
-    // 3. Linear Physics
+    // ===============================================================
+    // HYBRID PHYSICS: BULLET HELL CORE + AUDIO REACTIVE 
+    // ===============================================================
     
-    float totalEnergy = band1 + band2 + band3;
-    float airSpeedMultiplier = 1.5f + pow(totalEnergy, 2.0f) * 3.0f;
+    // Bullet Hell Core
+    float currentAngle = atan2(bullet.velY, bullet.velX);
+    float currentSpeed = length(float2(bullet.velX, bullet.velY));
     
-    bullet.posX += bullet.velX * airSpeedMultiplier * deltaTime;
-    bullet.posY += bullet.velY * airSpeedMultiplier * deltaTime;
+    // A. BASS PUMP ACCELERATOR
+    float flowSpeed = 2.0f + (pow(band1, 3.0f) * 7.0f);
     
-    float jitterAmount = band1 * 0.75f;
-    bullet.posX += sin(totalTime * 50.0f + index) * jitterAmount * deltaTime;
-    bullet.posY += cos(totalTime * 43.0f + index) * jitterAmount * deltaTime;
+    // B. SWEEP VORTEX
+    float turnRate = sweepFactor * 1.0f;
     
-    float2 toCenter = float2(originX - bullet.posX, originY - bullet.posY);
-    float2 tangent = float2(-toCenter.y, toCenter.x);
-    float vortexStrength = band2 * 0.5f;
-    bullet.posX += tangent.x * vortexStrength * deltaTime;
-    bullet.posY += tangent.y * vortexStrength * deltaTime;
+    // Jitter
+    float jitter = sin(totalTime * 15.0f + index) * band3 * 0.5f;
+    
+    // C. UPDATE ORBIT
+    currentAngle += (turnRate + jitter) * deltaTime;
+    
+    bullet.velX = cos(currentAngle) * currentSpeed;
+    bullet.velY = sin(currentAngle) * currentSpeed;
+
+    // D. APPLY PHYSICS
+    bullet.posX += bullet.velX * flowSpeed * deltaTime;
+    bullet.posY += bullet.velY * flowSpeed * deltaTime;
+
+    // E. PULSATING RADIUS
+    //bullet.baseRadius = bullet.spikes + (pow(band1, 2.0f) * 0.02f);
+
+    // ===============================================================   
 
     // 4. Kill boundary
     if (abs(bullet.posX) > 2.0f || abs(bullet.posY) > 2.0f)

@@ -1,27 +1,3 @@
-cbuffer GlobalConstants : register(b0)
-{
-    int spawnCount;
-    uint spawnStartIndex;
-    int stateID;
-    float chaosFactor;
-    float deltaTime;
-
-    float originX;
-    float originY;
-    float spatialSpread;
-    float totalTime;
-
-    float playerPosX;
-    float playerPosY;
-
-    float hitRadius;
-    float grazeRadius;
-    
-    float band1;
-    float band2;
-    float band3;
-};
-
 // Inputs
 
 struct VS_OUTPUT

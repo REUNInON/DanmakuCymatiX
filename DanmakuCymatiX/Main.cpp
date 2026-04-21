@@ -33,8 +33,8 @@ int WINAPI wWinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance, 
     FILE* stream; freopen_s(&stream, "CONOUT$", "w", stdout);
 
     // 1. OPEN WINDOW
-    const UINT WIDTH = 1080;
-    const UINT HEIGHT = 720;
+    const UINT WIDTH = 1920;
+    const UINT HEIGHT = 1080;
     HWND hWnd = SetupWindow(hInstance, WIDTH, HEIGHT);
 
     if (!hWnd) return -1;
@@ -114,6 +114,26 @@ int WINAPI wWinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance, 
             // ============================================================================
             const float fixedDeltaTime = 0.016f; // 60 FPS
 
+            // PLAYER
+            float playerSpeed = 0.75f;
+
+            // HOLD SHIFT TO MOVE SLOWER FOR BETTER CONTROL
+            if (GetAsyncKeyState(VK_SHIFT) & 0x8000) playerSpeed *= 0.5f;
+
+            if (GetAsyncKeyState('D') & 0x8000) constants.playerPosX += playerSpeed * fixedDeltaTime;
+            if (GetAsyncKeyState('A') & 0x8000) constants.playerPosX -= playerSpeed * fixedDeltaTime;
+            if (GetAsyncKeyState('W') & 0x8000) constants.playerPosY += playerSpeed * fixedDeltaTime;
+            if (GetAsyncKeyState('S') & 0x8000) constants.playerPosY -= playerSpeed * fixedDeltaTime;
+
+			// SAME WITH ARROW KEYS
+			if (GetAsyncKeyState(VK_RIGHT) & 0x8000) constants.playerPosX += playerSpeed * fixedDeltaTime;
+            if (GetAsyncKeyState(VK_LEFT) & 0x8000) constants.playerPosX -= playerSpeed * fixedDeltaTime;
+            if (GetAsyncKeyState(VK_UP) & 0x8000) constants.playerPosY += playerSpeed * fixedDeltaTime;
+            if (GetAsyncKeyState(VK_DOWN) & 0x8000) constants.playerPosY -= playerSpeed * fixedDeltaTime;
+
+            constants.playerPosX = std::clamp(constants.playerPosX, -2.0f, 2.0f);
+            constants.playerPosY = std::clamp(constants.playerPosY, -2.0f, 2.0f);
+
             while (accumulator >= fixedDeltaTime)
             {
 				g_sonicCore.Tick();
@@ -136,23 +156,28 @@ int WINAPI wWinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance, 
 				constants.band2 = band2Energy;
 				constants.band3 = band3Energy;
 
-				float dynamicSpawnRate = bassEnergy *  50.0f + ((midEnergy + presenceEnergy) * 10.0f);
+                // SWEEP
+                float currentTilt = band3Energy - band1Energy;
+                static float previousTilt = 0.0f;
+                float sweepVelocity = (currentTilt - previousTilt) / fixedDeltaTime;
+                previousTilt = currentTilt;
+                constants.sweepFactor = sweepVelocity * 0.5f;
+
+				float dynamicSpawnRate = bassEnergy *  24.0f;
 
 				//float dynamicSpawnRate = 0.0f + (band3Energy * 25.0f); // Base rate + scaled by band energy
 
-				float bossRoamRadius = 0.2f + (midEnergy * 55.0f);
+				float bossRoamRadius = 0.2f + (midEnergy * 25.0f);
 
                 static float patternCooldown = 0.0f;
                 static int currentPattern = 4;
                 patternCooldown -= fixedDeltaTime;
 
-                if (band1Energy > 0.25f && patternCooldown <= 0.0f)
+                if (band1Energy > 0.15f && patternCooldown <= 0.0f)
                 {
                     currentPattern = (currentPattern + 1) % 5;
                     patternCooldown = 2.0f;
                 }
-
-                constants.stateID = currentPattern;
 
                 StochasticPayload payload = g_stochastic.ProcessAudioFrame
                 (
@@ -161,17 +186,28 @@ int WINAPI wWinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance, 
                     g_sonicCore.GetRawSpectrum()
 				);
 
-				constants.chaosFactor = payload.chaosFactor + (band2Energy * 5.0f);
 
-                constants.spatialSpread = 1.2f + (midEnergy * 1.0f);
+                constants.packedStateAndSpawn = (currentPattern << 16) | (payload.spawnCount & 0xFFFF);
+				float sweepFactor = sweepVelocity * 1.5f;
+                constants.sweepFactor = sweepFactor;
 
+				constants.chaosFactor = payload.chaosFactor;
+
+                constants.spatialSpread = 1.2f + (midEnergy * 75.0f);
+
+				// BOSS MOVEMENT CALCULATION
                 float bossSpeed = 1.5f + (band3Energy * 25.0f);
+                
+                constants.originX += sweepFactor * bossSpeed * fixedDeltaTime;
+                constants.originY = 0.8f - (bassEnergy * 0.1f);
 
-                constants.originX += (payload.originX - constants.originX) * bossSpeed * fixedDeltaTime;
-                constants.originY += (payload.originY - constants.originY) * bossSpeed * fixedDeltaTime;
+				// OLDER GAUSSIAN ROAMING
+                // constants.originX += (payload.originX - constants.originX) * bossSpeed * fixedDeltaTime;
+                // constants.originY += (payload.originY - constants.originY) * bossSpeed * fixedDeltaTime;
+
+                constants.originX = std::clamp(constants.originX, -1.5f, 1.5f);
 
 				// POISSON SPAWN COUNT AND RING BUFFER INDEXING
-				constants.spawnCount = payload.spawnCount;
 				constants.spawnStartIndex = currentSpawnIndex;
 				currentSpawnIndex = (currentSpawnIndex + payload.spawnCount) % DanmakuPipeline::MAX_BULLETS;
 
