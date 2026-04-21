@@ -122,17 +122,33 @@ int WINAPI wWinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance, 
 
 				float trebleEnergy = g_sonicCore.GetBandEnergy(AudioBand::Presence);
 
+				float band1Energy = g_sonicCore.GetBandEnergy(AudioBand::LowerMids);
+				float band2Energy = g_sonicCore.GetBandEnergy(AudioBand::LowerMids);
+				float band3Energy = g_sonicCore.GetBandEnergy(AudioBand::Brilliance);
 
-				float dynamicSpawnRate = 0.0f + (bassEnergy * 50.0f); // Base rate + scaled by bass energy
+				constants.band1 = band1Energy;
+				constants.band2 = band2Energy;
+				constants.band3 = band3Energy;
+
+				float dynamicSpawnRate = 0.0f + (bassEnergy * 75.0f); // Base rate + scaled by bass energy
+
+				float bossRoamRadius = 0.2f + (trebleEnergy * 25.5f);
 
                 StochasticPayload payload = g_stochastic.ProcessAudioFrame
                 (
-                    0, 0,
-                    dynamicSpawnRate, 1.0f,
+                    0.0f, 0.9f,
+                    dynamicSpawnRate, bossRoamRadius,
                     g_sonicCore.GetRawSpectrum()
 				);
 
-				constants.chaosFactor = payload.chaosFactor + (trebleEnergy * 15.0f);
+				constants.chaosFactor = payload.chaosFactor + (band2Energy * 50.0f);
+
+                constants.spatialSpread = 0.2f + (trebleEnergy * 8.0f);
+
+                float bossSpeed = 1.5f + (band1Energy * 15.0f);
+
+                constants.originX += (payload.originX - constants.originX) * bossSpeed * fixedDeltaTime;
+                constants.originY += (payload.originY - constants.originY) * bossSpeed * fixedDeltaTime;
 
 				// POISSON SPAWN COUNT AND RING BUFFER INDEXING
 				constants.spawnCount = payload.spawnCount;

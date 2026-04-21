@@ -1,4 +1,5 @@
 #include "StochasticEngine.h"
+#include <cmath>
 
 StochasticEngine::StochasticEngine()
 {
@@ -17,6 +18,9 @@ StochasticPayload StochasticEngine::ProcessAudioFrame(float muX, float muY, floa
 	payload.chaosFactor = CalculateEntropy(spectrum);
 
 	payload.spawnCount = CalculatePoisson(poissonMultiplier);
+
+	payload.spatialSpread = CalculateSpatialSpread(payload.chaosFactor, 0.05f, gaussMultiplier);
+	CalculateBivariateGaussian(muX, muY, payload.spatialSpread, payload.originX, payload.originY);
 
 	return payload;
 }
@@ -68,4 +72,15 @@ float StochasticEngine::CalculateSpatialSpread(float energy, float minSpread, fl
 
 	// LERP
 	return minSpread + (maxSpread - minSpread) * energy;
+}
+
+void StochasticEngine::CalculateBivariateGaussian(float muX, float muY, float sigma, float& outX, float& outY)
+{
+	float safeSigma = (std::max)(0.0001f, sigma);
+
+	std::normal_distribution<float> distX(muX, safeSigma);
+	std::normal_distribution<float> distY(muY, safeSigma);
+
+	outX = distX(m_rng);
+	outY = distY(m_rng);
 }

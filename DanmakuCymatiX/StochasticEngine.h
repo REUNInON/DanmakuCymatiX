@@ -56,6 +56,7 @@ public:
 
 	// BIVARIATE GAUSS SIGMA CALCULATION (LERP)
 	float CalculateSpatialSpread(float energy, float minSpread, float maxSpread);
+	void CalculateBivariateGaussian(float muX, float muY, float sigma, float& outX, float& outY);
 
 	// MARKOV CHAIN
 	int UpdateMarkovState(float transitionTrigger);

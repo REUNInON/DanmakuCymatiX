@@ -20,6 +20,10 @@ cbuffer GlobalConstants : register(b0)
 
     float hitRadius;
     float grazeRadius;
+    
+    float band1;
+    float band2;
+    float band3;
 };
 
 struct BulletGPU
@@ -36,6 +40,14 @@ struct BulletGPU
 };
 
 RWStructuredBuffer<BulletGPU> Bullets : register(u0);
+
+// RNG FOR BIVARIATE GAUSS
+float hash(uint n)
+{
+    n = (n << 13U) ^ n;
+    n = n * (n * n * 15731U + 789221U) + 1376312589U;
+    return float(n & 0x7fffffffU) / 2147483648.0f;
+}
 
 // ===============================================================
 // COMPUTE KERNEL
@@ -61,27 +73,44 @@ void main(uint3 DTid : SV_DispatchThreadID)
     {
         bullet.state = 1;
         bullet.spawnTime = totalTime;
-
-        float hoverX = sin(totalTime * 1.5f) * 0.1f;
-        float hoverY = cos(totalTime * 2.1f) * 0.02f;
-        float musicJitterX = sin(totalTime * 30.0f) * (chaosFactor * 0.015f);
         
-        bullet.posX = originX + hoverX + musicJitterX;
-        bullet.posY = 0.85f + hoverY;
-
-        float angle = -1.5708f;
-        float speed = 1.4f + (float(index % 5) * 0.01f);
-
+        
+        // ===============================================
+        // SPAWNER
+        // ===============================================
+        
+        bullet.posX = originX;
+        bullet.posY = originY;
+        
+        float u1 = max(0.00001f, hash(index + (uint) (totalTime * 1000.0f)));
+        float u2 = hash(index + 1337U + (uint) (totalTime * 1000.0f));
+        
+        float z0 = sqrt(-2.0f * log(u1)) * cos(6.28318f * u2); // Box-Mueller
+        float z1 = sqrt(-2.0f * log(u1)) * sin(6.28318f * u2);
+        
+        float baseAngle = -1.5708f; // Directly downwards
+        float angle = baseAngle + (z0 * spatialSpread);
+       
+        float speed = 0.5f + (z1 * 0.05f) + (band2 * 2.5f);
+        bullet.baseRadius = 0.1f + (band1 * 0.1f) * chaosFactor;
+        
+        // ===============================================
+        // SPAWNER END
+        // ===============================================
         
         if (stateID == 0)
         {
             // STATE 0
+            /*
             float streamCount = 15.0f;
             float streamID = float(index % int(streamCount));
             float angleOffset = ((streamID / streamCount) - 0.5f) * 1.6f;
             angle += angleOffset + sin(totalTime * 1.0f) * 0.3f;
+            */
+            //bullet.baseRadius = 0.25f * chaosFactor;
             
-            bullet.baseRadius = 0.05f;
+            bullet.velX = cos(angle) * speed * band2;
+            bullet.velY = sin(angle) * speed + band2;
         }
         else if (stateID == 1)
         {
@@ -117,13 +146,13 @@ void main(uint3 DTid : SV_DispatchThreadID)
     if (bullet.state == 0)
         return;
     
-    // MVP: BASIC PHYSICS FOR NOW (d = v * t)
-    bullet.posX += bullet.velX * deltaTime;
-    bullet.posY += bullet.velY * deltaTime;
+    float airSpeedMultiplier = 1.0f + (band2 * 15.0f);
+    bullet.posX += bullet.velX * airSpeedMultiplier * deltaTime;
+    bullet.posY += bullet.velY * airSpeedMultiplier * deltaTime;
 
     // MVP: BASIC STOCHASTIC INFLUENCE (CHAOS FACTOR)
-    bullet.posX += cos(totalTime * 10.0 + index) * chaosFactor * deltaTime * 0.2;
-    bullet.posY += sin(totalTime * 10.0 + index) * chaosFactor * deltaTime * 0.2;
+    //bullet.posX += cos(totalTime * 10.0 + index) * chaosFactor * deltaTime * 0.2;
+    //bullet.posY += sin(totalTime * 10.0 + index) * chaosFactor * deltaTime * 0.2;
     
     if (abs(bullet.posX) > 2.0f || abs(bullet.posY) > 2.0f)
     {

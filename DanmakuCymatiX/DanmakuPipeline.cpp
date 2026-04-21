@@ -38,6 +38,7 @@ void DanmakuPipeline::Dispatch(Renderer& renderer, const GlobalConstants& consta
 	cmdList->SetComputeRootUnorderedAccessView(1, m_bulletBuffer->GetGPUVirtualAddress());
 
 	// 4. Dispatch Compute Shader
+	// TODO: UINT threadGroupsX = (MAX_BULLETS + 255) / 256;
 	cmdList->Dispatch(391, 1, 1); // 256 Threads per group: 100k / 256 = 391 groups
 }
 

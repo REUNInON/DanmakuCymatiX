@@ -41,7 +41,9 @@ struct alignas(16) GlobalConstants
     float hitRadius;
     float grazeRadius;
 
-    
+    float band1;
+	float band2;
+    float band3;
 };
 
 // ==============================================================================
