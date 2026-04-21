@@ -17,6 +17,10 @@ StochasticPayload StochasticEngine::ProcessAudioFrame(float muX, float muY, floa
 
 	payload.chaosFactor = CalculateEntropy(spectrum);
 
+
+	unsigned int audioSeed = static_cast<unsigned int>(payload.chaosFactor * 13371337.0f) ^ static_cast<unsigned int>(poissonMultiplier * 1000.0f);
+	m_rng.seed(audioSeed);
+
 	payload.spawnCount = CalculatePoisson(poissonMultiplier);
 
 	payload.spatialSpread = CalculateSpatialSpread(payload.chaosFactor, 0.05f, gaussMultiplier);

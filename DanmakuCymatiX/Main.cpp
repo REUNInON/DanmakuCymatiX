@@ -118,21 +118,33 @@ int WINAPI wWinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance, 
             {
 				g_sonicCore.Tick();
 
-				float bassEnergy = g_sonicCore.GetBandEnergy(AudioBand::SubBass);
+				float bassEnergy = g_sonicCore.GetBandEnergy(AudioBand::Bass);
 
 				float trebleEnergy = g_sonicCore.GetBandEnergy(AudioBand::Presence);
 
-				float band1Energy = g_sonicCore.GetBandEnergy(AudioBand::LowerMids);
+				float band1Energy = g_sonicCore.GetBandEnergy(AudioBand::Bass);
 				float band2Energy = g_sonicCore.GetBandEnergy(AudioBand::LowerMids);
-				float band3Energy = g_sonicCore.GetBandEnergy(AudioBand::Brilliance);
+				float band3Energy = g_sonicCore.GetBandEnergy(AudioBand::HigherMids);
 
 				constants.band1 = band1Energy;
 				constants.band2 = band2Energy;
 				constants.band3 = band3Energy;
 
-				float dynamicSpawnRate = 0.0f + (bassEnergy * 75.0f); // Base rate + scaled by bass energy
+				float dynamicSpawnRate = 0.0f + (band2Energy * 25.0f); // Base rate + scaled by bass energy
 
-				float bossRoamRadius = 0.2f + (trebleEnergy * 25.5f);
+				float bossRoamRadius = 0.2f + (trebleEnergy * 35.0f);
+
+                static float patternCooldown = 0.0f;
+                static int currentPattern = 4;
+                patternCooldown -= fixedDeltaTime;
+
+                if (band1Energy > 0.25f && patternCooldown <= 0.0f)
+                {
+                    currentPattern = (currentPattern + 1) % 5;
+                    patternCooldown = 2.0f;
+                }
+
+                constants.stateID = currentPattern;
 
                 StochasticPayload payload = g_stochastic.ProcessAudioFrame
                 (
@@ -141,9 +153,9 @@ int WINAPI wWinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance, 
                     g_sonicCore.GetRawSpectrum()
 				);
 
-				constants.chaosFactor = payload.chaosFactor + (band2Energy * 50.0f);
+				constants.chaosFactor = payload.chaosFactor + (band2Energy * 5.0f);
 
-                constants.spatialSpread = 0.2f + (trebleEnergy * 8.0f);
+                constants.spatialSpread = 1.2f + (trebleEnergy * 8.0f);
 
                 float bossSpeed = 1.5f + (band1Energy * 15.0f);
 

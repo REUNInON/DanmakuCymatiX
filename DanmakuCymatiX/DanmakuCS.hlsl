@@ -57,7 +57,7 @@ void PatternNWaySpiral(uint index, float t, float b3, out float angle, out float
     float baseAngle = (streamID / streamCount) * 6.28318f;
     float spinSpeed = 2.0f + (b3 * 5.0f);
     angle = baseAngle + (t * spinSpeed);
-    speed = 1.0f;
+    speed = 0.15f;
 }
 
 // The Sweeper: A fan of streams swaying left and right. Sway width scales with Bass (band1).
@@ -68,7 +68,7 @@ void PatternSweeper(uint index, float t, float b1, out float angle, out float sp
     float fanAngle = -1.5708f - 1.0f + (streamID * 0.4f);
     float swayAmount = 1.0f + (b1 * 2.0f);
     angle = fanAngle + sin(t * 3.0f) * swayAmount;
-    speed = 1.5f;
+    speed = 0.3f;
 }
 
 // Golden Ratio: Sunflower seed distribution forming a mesmerizing spiral.
@@ -76,7 +76,7 @@ void PatternGoldenRatio(uint index, float t, out float angle, out float speed)
 {
     float goldenAngle = 2.39996f;
     angle = float(index) * goldenAngle + (t * 1.5f);
-    speed = 0.5f + (float(index % 100) * 0.01f);
+    speed = 0.1f + (float(index % 100) * 0.005f);
 }
 
 // Audio-Reactive Nova: 360-degree bursts. Burst speed scales heavily with Bass (band1).
@@ -85,7 +85,7 @@ void PatternAudioNova(uint index, float b1, out float angle, out float speed)
     float bulletsPerRing = 32.0f;
     float ringIndex = float(index % int(bulletsPerRing));
     angle = (ringIndex / bulletsPerRing) * 6.28318f;
-    speed = 0.2f + (b1 * 3.0f);
+    speed = 0.05f + (b1 * 0.75f);
 }
 
 // Classic Shotgun: Pure Box-Muller Gaussian spread downwards.
@@ -93,7 +93,8 @@ void PatternClassicShotgun(float spread, float b2, float z0, float z1, out float
 {
     float baseAngle = -1.5708f;
     angle = baseAngle + (z0 * spread);
-    speed = 0.5f + (z1 * 0.05f) + (b2 * 2.5f);
+    //speed = 1.0f + (z1 * 0.05f) + (b2 * 2.5f);
+    speed = 0.5f + (z1 * 0.02f);
 }
 
 
@@ -125,16 +126,18 @@ void main(uint3 DTid : SV_DispatchThreadID)
         bullet.posX = originX;
         bullet.posY = originY;
         
+        uint audioSeed = (uint) (chaosFactor * 10000.0f) + (uint) (band1 * 1000.0f);
+        
         // Random variables for Gaussian/Shotgun patterns
-        float u1 = max(0.00001f, hash(index + (uint) (totalTime * 1000.0f)));
-        float u2 = hash(index + 1337U + (uint) (totalTime * 1000.0f));
+        float u1 = max(0.00001f, hash(index + (uint) (totalTime * 1000.0f) + audioSeed));
+        float u2 = hash(index + 1337U + (uint) (totalTime * 1000.0f) + audioSeed);
         float z0 = sqrt(-2.0f * log(u1)) * cos(6.28318f * u2);
         float z1 = sqrt(-2.0f * log(u1)) * sin(6.28318f * u2);
 
         float angle = 0.0f;
         float speed = 0.0f;
         
-        int pattern = (int)(chaosFactor * 1.2f);
+        int pattern = stateID;
 
         if (pattern == 0)
         {
@@ -160,7 +163,7 @@ void main(uint3 DTid : SV_DispatchThreadID)
         bullet.velX = cos(angle) * speed;
         bullet.velY = sin(angle) * speed;
         
-        bullet.baseRadius = 0.1f + (band1 * 4.0f) * chaosFactor * deltaTime;
+        bullet.baseRadius = 0.1f + (band1 * 15.0f) * chaosFactor * deltaTime;
         
         Bullets[index] = bullet;
         return;
@@ -171,7 +174,7 @@ void main(uint3 DTid : SV_DispatchThreadID)
         return;
     
     // 3. Linear Physics
-    float airSpeedMultiplier = 0.5f + (band2 * 5.0f);
+    float airSpeedMultiplier = 0.35f + (band1 * 75.0f);
     
     bullet.posX += bullet.velX * airSpeedMultiplier * deltaTime;
     bullet.posY += bullet.velY * airSpeedMultiplier * deltaTime;
