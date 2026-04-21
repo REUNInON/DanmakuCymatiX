@@ -46,6 +46,58 @@ float hash(uint n)
 }
 
 // ===============================================================
+// DANMAKU PATTERN METHODS
+// ===============================================================
+
+// N-Way Spiral: 5 streams rotating over time. Rotation speed scales with Treble (band3).
+void PatternNWaySpiral(uint index, float t, float b3, out float angle, out float speed)
+{
+    float streamCount = 5.0f;
+    float streamID = float(index % int(streamCount));
+    float baseAngle = (streamID / streamCount) * 6.28318f;
+    float spinSpeed = 2.0f + (b3 * 5.0f);
+    angle = baseAngle + (t * spinSpeed);
+    speed = 1.0f;
+}
+
+// The Sweeper: A fan of streams swaying left and right. Sway width scales with Bass (band1).
+void PatternSweeper(uint index, float t, float b1, out float angle, out float speed)
+{
+    float streamCount = 6.0f;
+    float streamID = float(index % int(streamCount));
+    float fanAngle = -1.5708f - 1.0f + (streamID * 0.4f);
+    float swayAmount = 1.0f + (b1 * 2.0f);
+    angle = fanAngle + sin(t * 3.0f) * swayAmount;
+    speed = 1.5f;
+}
+
+// Golden Ratio: Sunflower seed distribution forming a mesmerizing spiral.
+void PatternGoldenRatio(uint index, float t, out float angle, out float speed)
+{
+    float goldenAngle = 2.39996f;
+    angle = float(index) * goldenAngle + (t * 1.5f);
+    speed = 0.5f + (float(index % 100) * 0.01f);
+}
+
+// Audio-Reactive Nova: 360-degree bursts. Burst speed scales heavily with Bass (band1).
+void PatternAudioNova(uint index, float b1, out float angle, out float speed)
+{
+    float bulletsPerRing = 32.0f;
+    float ringIndex = float(index % int(bulletsPerRing));
+    angle = (ringIndex / bulletsPerRing) * 6.28318f;
+    speed = 0.2f + (b1 * 3.0f);
+}
+
+// Classic Shotgun: Pure Box-Muller Gaussian spread downwards.
+void PatternClassicShotgun(float spread, float b2, float z0, float z1, out float angle, out float speed)
+{
+    float baseAngle = -1.5708f;
+    angle = baseAngle + (z0 * spread);
+    speed = 0.5f + (z1 * 0.05f) + (b2 * 2.5f);
+}
+
+
+// ===============================================================
 // COMPUTE KERNEL
 // ===============================================================
 
@@ -62,7 +114,6 @@ void main(uint3 DTid : SV_DispatchThreadID)
     
     // Poisson
     uint diff = (index - spawnStartIndex + 100000) % 100000;
-    
     bool shouldSpawn = (diff < spawnCount);
         
     if (shouldSpawn)
@@ -70,100 +121,66 @@ void main(uint3 DTid : SV_DispatchThreadID)
         bullet.state = 1;
         bullet.spawnTime = totalTime;
         
-        
-        // ===============================================
-        // SPAWNER
-        // ===============================================
-        
+        // Origin logic
         bullet.posX = originX;
         bullet.posY = originY;
         
+        // Random variables for Gaussian/Shotgun patterns
         float u1 = max(0.00001f, hash(index + (uint) (totalTime * 1000.0f)));
         float u2 = hash(index + 1337U + (uint) (totalTime * 1000.0f));
-        
-        float z0 = sqrt(-2.0f * log(u1)) * cos(6.28318f * u2); // Box-Mueller
+        float z0 = sqrt(-2.0f * log(u1)) * cos(6.28318f * u2);
         float z1 = sqrt(-2.0f * log(u1)) * sin(6.28318f * u2);
+
+        float angle = 0.0f;
+        float speed = 0.0f;
         
-        float sway = sin(totalTime * (1.5f + chaosFactor)) * 0.7f;
-        
-        float baseAngle = -1.5708f + sway; // Directly downwards
-        //float angle = baseAngle + (z0 * spatialSpread);
-       
-        float streamCount = 5.0f;
-        float streamID = float(index % int(streamCount));
-        float baseStreamAngle = baseAngle - 0.6f + (streamID / (streamCount - 1.0f)) * 1.2f;
-        
-        float angle = baseStreamAngle + (z0 * spatialSpread * 0.1f);
-        
-        float speed = 0.5f + (z1 * 0.05f) + (band2 * 2.5f);
-        bullet.baseRadius = 0.1f + (band1 * 2.0f) * chaosFactor * deltaTime;
-        
-        // ===============================================
-        // SPAWNER END
-        // ===============================================
-        if (stateID == 0)
+        int pattern = (int)chaosFactor;
+
+        if (pattern == 0)
         {
-            // STATE 0
-            /*
-            float streamCount = 15.0f;
-            float streamID = float(index % int(streamCount));
-            float angleOffset = ((streamID / streamCount) - 0.5f) * 1.6f;
-            angle += angleOffset + sin(totalTime * 1.0f) * 0.3f;
-            */
-            
+            PatternNWaySpiral(index, totalTime, band3, angle, speed);
         }
-        else if (stateID == 1)
+        else if (pattern == 1)
         {
-            // STATE 1: (Crossing Streams)
-            float streamCount = 8.0f;
-            float streamID = float(index % int(streamCount));
-            
-            float direction = (index % 2 == 0) ? 1.0f : -1.0f;
-            
-            angle += ((streamID / streamCount) - 0.5f) * 2.5f + (sin(totalTime * 3.0f) * 0.5f * direction);
-            speed *= 0.001f;
-            bullet.baseRadius = 0.1f;
+            PatternSweeper(index, totalTime, band1, angle, speed);
+        }
+        else if (pattern == 2)
+        {
+            PatternGoldenRatio(index, totalTime, angle, speed);
+        }
+        else if (pattern == 3)
+        {
+            PatternAudioNova(index, band1, angle, speed);
         }
         else
         {
-            // STATE 2: CYMATIC FLOWER
-            
-            // Golden Ratio
-            angle = float(index) * 2.39996f + (totalTime * 2.0f);
-            
-            // Flower Petals
-            float petalCount = 5.0f;
-            
-            float petalShape = abs(sin(angle * petalCount));
-            
-            speed = 0.03f + (petalShape * 0.8f);
-            
-            speed += (band1 * 0.5f);
-            
-            bullet.baseRadius = 0.1f + (petalShape * 0.05f);
+            PatternClassicShotgun(spatialSpread, band2, z0, z1, angle, speed);
         }
 
         bullet.velX = cos(angle) * speed;
         bullet.velY = sin(angle) * speed;
         
-        //bullet.baseRadius = 0.05f;
+        bullet.baseRadius = 0.1f + (band1 * 2.0f) * chaosFactor * deltaTime;
         
         Bullets[index] = bullet;
         return;
     }
+    
     // 2. Skip if the bullet is dead
     if (bullet.state == 0)
         return;
     
-    float airSpeedMultiplier = 0.5f + (band2 * 50.0f);
+    // 3. Linear Physics
+    float airSpeedMultiplier = 0.5f + (band2 * 5.0f);
     
     bullet.posX += bullet.velX * airSpeedMultiplier * deltaTime;
     bullet.posY += bullet.velY * airSpeedMultiplier * deltaTime;
 
-   if (abs(bullet.posX) > 2.0f || abs(bullet.posY) > 2.0f)
-   {
+    // 4. Kill boundary
+    if (abs(bullet.posX) > 2.0f || abs(bullet.posY) > 2.0f)
+    {
         bullet.state = 0;
-   }
+    }
     
     // 5. Write the updated bullet back to the VRAM
     Bullets[index] = bullet;
