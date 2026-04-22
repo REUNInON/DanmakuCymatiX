@@ -22,6 +22,9 @@ struct alignas(16) BulletGPU
 // GPU Payload
 struct alignas(16) GlobalConstants
 {
+	float screenWidth;
+	float screenHeight;
+
 	// Data from Stochastic Engine
 	uint32_t packedStateAndSpawn; // 16 bits for state ID, 16 bits for spawn count (Bit Packing). Spawn Limit: 65535 per Frame
 	uint32_t spawnStartIndex; // For the ring buffer of bullets (Poisson distribution)
@@ -69,6 +72,8 @@ public:
     ID3D12Resource* GetBulletBuffer() const { return m_bulletBuffer.Get(); }
     ID3D12DescriptorHeap* GetCbvSrvUavHeap() const { return m_cbvSrvUavHeap.Get(); }
 
+	uint32_t GetLastFrameHitCount();
+
 private:
     ComPtr<ID3D12RootSignature> m_computeRS;
     ComPtr<ID3D12PipelineState> m_computePSO;
@@ -77,6 +82,11 @@ private:
     UINT m_descriptorSize = 0;
 
     ComPtr<ID3D12Resource> m_bulletBuffer; // Structured Buffer for Bullet Data (UAV)
+
+    // COLLISION BUFFER & VIEWS
+	ComPtr<ID3D12Resource> m_hitCounterBuffer;
+	ComPtr<ID3D12Resource> m_hitCounterResetBuffer;
+	ComPtr<ID3D12Resource> m_hitCounterReadbackBuffer;
 
     HRESULT CreateComputeRootSignature_(Renderer& renderer);
     HRESULT CreateComputePSO_(Renderer& renderer);
@@ -88,7 +98,7 @@ private:
 
 public:
 
-    void Render(Renderer& renderer);
+    void Render(Renderer& renderer, const GlobalConstants& constants);
 
 private:
     ComPtr<ID3D12RootSignature> m_graphicsRS;

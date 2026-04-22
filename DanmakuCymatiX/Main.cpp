@@ -83,10 +83,13 @@ int WINAPI wWinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance, 
 	// DEFINE GPU CONSTANTS STRUCTURE
 	GlobalConstants constants = {};
 
+    constants.screenWidth = (float)WIDTH;
+    constants.screenHeight = (float)HEIGHT;
+
 	constants.originX = 0.0f;
 	constants.originY = 0.0f;
-    constants.hitRadius = 5.0f;
-	constants.grazeRadius = 15.0f;
+    constants.hitRadius = 0.045f;
+	constants.grazeRadius = 0.2f;
 
     uint32_t currentSpawnIndex = 0; // For ring buffer of bullets (Poisson)
 
@@ -225,7 +228,7 @@ int WINAPI wWinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance, 
             g_renderer.BeginFrame();
             g_pipeline.Dispatch(g_renderer, constants);
 			g_renderer.IssueBarrier(g_renderer.GetCommandList(), g_pipeline.GetBulletBuffer(), D3D12_RESOURCE_STATE_UNORDERED_ACCESS, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
-			g_pipeline.Render(g_renderer);
+			g_pipeline.Render(g_renderer, constants);
 			g_renderer.IssueBarrier(g_renderer.GetCommandList(), g_pipeline.GetBulletBuffer(), D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
             g_renderer.EndFrame();
         }

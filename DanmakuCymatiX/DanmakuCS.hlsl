@@ -1,5 +1,8 @@
 cbuffer GlobalConstants : register(b0)
 {
+    float screenWidth;
+    float screenHeight;
+    
     uint packedStateAndSpawn; // 16 bits for state ID, 16 bits for spawn count (Bit Packing). Spawn Limit: 65535 per Frame
     uint spawnStartIndex; // For the ring buffer of bullets (Poisson distribution)
     float sweepFactor;
@@ -36,6 +39,7 @@ struct BulletGPU
 };
 
 RWStructuredBuffer<BulletGPU> Bullets : register(u0);
+RWStructuredBuffer<uint> HitCounter : register(u1);
 
 // RNG FOR BIVARIATE GAUSS
 float hash(uint n)
@@ -211,7 +215,8 @@ void main(uint3 DTid : SV_DispatchThreadID)
     float currentSpeed = length(float2(bullet.velX, bullet.velY));
     
     // A. BASS PUMP ACCELERATOR
-    float flowSpeed = 2.0f + (pow(band1, 3.0f) * 7.0f);
+    // TODO: Might be bad for the game feel.
+    float flowSpeed = 2.0f + (pow(band1, 3.0f) * 10.0f);
     
     // B. SWEEP VORTEX
     float turnRate = sweepFactor * 1.0f;
@@ -233,7 +238,26 @@ void main(uint3 DTid : SV_DispatchThreadID)
     //bullet.baseRadius = bullet.spikes + (pow(band1, 2.0f) * 0.02f);
 
     // ===============================================================   
-
+    // COLLISION
+    // ===============================================================
+    
+    float dx = bullet.posX - playerPosX;
+    float dy = bullet.posY - playerPosY;
+    float distSq = (dx * dx) + (dy * dy);
+    
+    float totalRadius = hitRadius;
+    
+    if (distSq < (totalRadius * totalRadius))
+    {
+        bullet.baseRadius = 10.0f; // TODO: Other visual feedback.
+        InterlockedAdd(HitCounter[0], 1);
+        bullet.state = 0;
+    }
+    else if (distSq < ((bullet.baseRadius + grazeRadius) * (bullet.baseRadius + grazeRadius)))
+    {
+        // GRAZE
+    }
+    
     // 4. Kill boundary
     if (abs(bullet.posX) > 2.0f || abs(bullet.posY) > 2.0f)
     {

@@ -24,11 +24,35 @@ struct BulletGPU
     float spikes;
 };
 
+cbuffer GlobalConstants : register(b0)
+{
+    float screenWidth;
+    float screenHeight;
+    uint packedStateAndSpawn;
+    uint spawnStartIndex;
+    float sweepFactor;
+    float chaosFactor;
+    float deltaTime;
+    float originX;
+    float originY;
+    float spatialSpread;
+    float totalTime;
+    float playerPosX;
+    float playerPosY;
+    float hitRadius;
+    float grazeRadius;
+    float band1;
+    float band2;
+    float band3;
+};
+
+/* Alternative: Separate cbuffer for screen dimensions
 cbuffer InstanceData : register(b0)
 {
     float screenWidth;
     float screenHeight;    
 };
+*/
 
 StructuredBuffer<BulletGPU> instanceBuffer : register(t0);
 

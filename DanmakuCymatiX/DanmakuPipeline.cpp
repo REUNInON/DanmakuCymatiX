@@ -27,6 +27,11 @@ void DanmakuPipeline::Dispatch(Renderer& renderer, const GlobalConstants& consta
 {
 	auto cmdList = renderer.GetCommandList();
 
+	// 0. Reset Hit Counter to 0 at the start of each dispatch
+	renderer.IssueBarrier(cmdList, m_hitCounterBuffer.Get(), D3D12_RESOURCE_STATE_UNORDERED_ACCESS, D3D12_RESOURCE_STATE_COPY_DEST);
+	cmdList->CopyBufferRegion(m_hitCounterBuffer.Get(), 0, m_hitCounterResetBuffer.Get(), 0, sizeof(uint32_t));
+	renderer.IssueBarrier(cmdList, m_hitCounterBuffer.Get(), D3D12_RESOURCE_STATE_COPY_DEST, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
+
 	// 1. Set Compute Root Signature and Pipeline State
 	cmdList->SetComputeRootSignature(m_computeRS.Get());
 	cmdList->SetPipelineState(m_computePSO.Get());
@@ -37,12 +42,20 @@ void DanmakuPipeline::Dispatch(Renderer& renderer, const GlobalConstants& consta
 	// 3. Slot 1: Set UAV Buffer (u0)
 	cmdList->SetComputeRootUnorderedAccessView(1, m_bulletBuffer->GetGPUVirtualAddress());
 
-	// 4. Dispatch Compute Shader
+	// 4. Slot 2: Set UAV Buffer for Hit Counter (u1)
+	cmdList->SetComputeRootUnorderedAccessView(2, m_hitCounterBuffer->GetGPUVirtualAddress());
+
+	// 5. Dispatch Compute Shader
 	// TODO: UINT threadGroupsX = (MAX_BULLETS + 255) / 256;
 	cmdList->Dispatch(391, 1, 1); // 256 Threads per group: 100k / 256 = 391 groups
+
+	// 6. Read back hit count from GPU to CPU
+	renderer.IssueBarrier(cmdList, m_hitCounterBuffer.Get(), D3D12_RESOURCE_STATE_UNORDERED_ACCESS, D3D12_RESOURCE_STATE_COPY_SOURCE);
+	cmdList->CopyBufferRegion(m_hitCounterReadbackBuffer.Get(), 0, m_hitCounterBuffer.Get(), 0, sizeof(uint32_t));
+	renderer.IssueBarrier(cmdList, m_hitCounterBuffer.Get(), D3D12_RESOURCE_STATE_COPY_SOURCE, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
 }
 
-void DanmakuPipeline::Render(Renderer& renderer)
+void DanmakuPipeline::Render(Renderer& renderer, const GlobalConstants& constants)
 {
 	auto cmdList = renderer.GetCommandList();
 
@@ -55,7 +68,7 @@ void DanmakuPipeline::Render(Renderer& renderer)
 
 	// 3. Slot 0: Set View/Projection Constants (b0)
 	float screenDimensions[2] = { static_cast<float>(renderer.Width()), static_cast<float>(renderer.Height()) };
-	cmdList->SetGraphicsRoot32BitConstants(0, 2, screenDimensions, 0);
+	cmdList->SetGraphicsRoot32BitConstants(0, sizeof(GlobalConstants) / 4, &constants, 0);
 
 	// 4. Slot 1: Set SRV Buffer (t0)
 	cmdList->SetGraphicsRootShaderResourceView(1, m_bulletBuffer->GetGPUVirtualAddress());
@@ -77,7 +90,7 @@ void DanmakuPipeline::Shutdown()
 /// <returns></returns>
 HRESULT DanmakuPipeline::CreateComputeRootSignature_(Renderer& renderer)
 {
-	D3D12_ROOT_PARAMETER rootParameters[2] = {};
+	D3D12_ROOT_PARAMETER rootParameters[3] = {};
 
 	// ======================================================================
 	// SLOT 0: GLOBAL CONSTANTS (b0) - Sonic Core Data + Stochastic Payload
@@ -97,6 +110,15 @@ HRESULT DanmakuPipeline::CreateComputeRootSignature_(Renderer& renderer)
 	rootParameters[1].Descriptor.ShaderRegister = 0; // u0
 	rootParameters[1].Descriptor.RegisterSpace = 0;
 	rootParameters[1].ShaderVisibility = D3D12_SHADER_VISIBILITY_ALL;
+
+	// ======================================================================
+	// SLOT 2: UAV BUFFER (u1) - Hit Counter Buffer
+	// ======================================================================
+
+	rootParameters[2].ParameterType = D3D12_ROOT_PARAMETER_TYPE_UAV;
+	rootParameters[2].Descriptor.ShaderRegister = 1; // u1
+	rootParameters[2].Descriptor.RegisterSpace = 0;
+	rootParameters[2].ShaderVisibility = D3D12_SHADER_VISIBILITY_ALL;
 
 	// ======================================================================
 	// ROOT SIGNATURE DESCRIPTION
@@ -192,6 +214,26 @@ HRESULT DanmakuPipeline::CreateBulletBufferAndViews_(Renderer& renderer)
 
 	DX(renderer.CreateBuffer(desc, D3D12_HEAP_TYPE_DEFAULT, D3D12_RESOURCE_STATE_UNORDERED_ACCESS, m_bulletBuffer));
 
+	// =======================================================================
+	// READBACK BUFFER FOR HIT COUNTER & RESOURCE FOR RESETTING HIT COUNTER
+	// =======================================================================
+
+	D3D12_RESOURCE_DESC counterDesc = desc;
+	counterDesc.Width = sizeof(uint32_t); // 4 bytes for hit count
+	counterDesc.Flags = D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS;
+
+	// Create UAV Buffer for Hit Counter
+	DX(renderer.CreateBuffer(counterDesc, D3D12_HEAP_TYPE_DEFAULT, D3D12_RESOURCE_STATE_UNORDERED_ACCESS, m_hitCounterBuffer));
+
+	counterDesc.Flags = D3D12_RESOURCE_FLAG_NONE; // Lift UAV flag for readback
+
+	DX(renderer.CreateBuffer(counterDesc, D3D12_HEAP_TYPE_UPLOAD, D3D12_RESOURCE_STATE_GENERIC_READ, m_hitCounterResetBuffer));
+	uint32_t* mappedReset = nullptr;
+	m_hitCounterResetBuffer->Map(0, nullptr, reinterpret_cast<void**>(&mappedReset));
+	*mappedReset = 0;
+	m_hitCounterResetBuffer->Unmap(0, nullptr);
+	
+	DX(renderer.CreateBuffer(counterDesc, D3D12_HEAP_TYPE_READBACK, D3D12_RESOURCE_STATE_COPY_DEST, m_hitCounterReadbackBuffer));
 	return S_OK;
 }
 
@@ -211,8 +253,8 @@ HRESULT DanmakuPipeline::CreateGraphicsRootSignature_(Renderer& renderer)
 	rootParameters[0].ParameterType = D3D12_ROOT_PARAMETER_TYPE_32BIT_CONSTANTS;
 	rootParameters[0].Constants.ShaderRegister = 0; // b0
 	rootParameters[0].Constants.RegisterSpace = 0;
-	rootParameters[0].Constants.Num32BitValues = 2; // Width and Height
-	rootParameters[0].ShaderVisibility = D3D12_SHADER_VISIBILITY_VERTEX;
+	rootParameters[0].Constants.Num32BitValues = sizeof(GlobalConstants) / 4;
+	rootParameters[0].ShaderVisibility = D3D12_SHADER_VISIBILITY_ALL;
 
 	// ======================================================================
 	// SLOT 1: SRV BUFFER (t0) - Bullet Pool
@@ -312,4 +354,15 @@ HRESULT DanmakuPipeline::CreateGraphicsPSO_(Renderer& renderer)
 	return S_OK;
 }
 
+uint32_t DanmakuPipeline::GetLastFrameHitCount()
+{
+	uint32_t hitCount = 0;
+	uint32_t* mappedData = nullptr;
 
+	if (SUCCEEDED(m_hitCounterReadbackBuffer->Map(0, nullptr, reinterpret_cast<void**>(&mappedData))))
+	{
+		hitCount = *mappedData;
+		m_hitCounterReadbackBuffer->Unmap(0, nullptr);
+	}
+	return hitCount;
+}
