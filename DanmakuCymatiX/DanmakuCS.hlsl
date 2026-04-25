@@ -61,7 +61,8 @@ void PatternNWaySpiral(uint index, float t, float b3, out float angle, out float
     float baseAngle = (streamID / streamCount) * 6.28318f;
     float spinSpeed = 2.0f + (b3 * 5.0f);
     angle = baseAngle + (t * spinSpeed);
-    speed = 1.0f;
+    //speed = 1.0f;
+    speed = band1 * 4.5f;
 }
 
 // The Sweeper: A fan of streams swaying left and right. Sway width scales with Bass (band1).
@@ -72,7 +73,8 @@ void PatternSweeper(uint index, float t, float b1, out float angle, out float sp
     float fanAngle = -1.5708f - 1.0f + (streamID * 0.4f);
     float swayAmount = 1.0f + (b1 * 2.0f);
     angle = fanAngle + sin(t * 3.0f) * swayAmount;
-    speed = 0.5f;
+    //speed = 0.5f;
+    speed = band1 * 4.5f;
 }
 
 // Golden Ratio: Sunflower seed distribution forming a mesmerizing spiral.
@@ -80,7 +82,8 @@ void PatternGoldenRatio(uint index, float t, out float angle, out float speed)
 {
     float goldenAngle = 2.39996f;
     angle = float(index) * goldenAngle + (t * 1.5f);
-    speed = 0.02f + (float(index % 100) * 0.005f);
+    //speed = 0.02f + (float(index % 100) * 0.005f);
+    speed = band1 * 4.5f;
 }
 
 // Audio-Reactive Nova: 360-degree bursts. Burst speed scales heavily with Bass (band1).
@@ -89,7 +92,8 @@ void PatternAudioNova(uint index, float b1, out float angle, out float speed)
     float bulletsPerRing = 32.0f;
     float ringIndex = float(index % int(bulletsPerRing));
     angle = (ringIndex / bulletsPerRing) * 6.28318f;
-    speed = 0.1f + (b1 * 0.75f);
+    //speed = 0.1f + (b1 * 0.75f);
+    speed = band1 * 4.5f;
 }
 
 // Classic Shotgun: Pure Box-Muller Gaussian spread downwards.
@@ -97,7 +101,8 @@ void PatternClassicShotgun(float spread, float b2, float z0, float z1, out float
 {
     float baseAngle = -1.5708f;
     angle = baseAngle + (z0 * spread);
-    speed = 0.5f + (z1 * 0.02f) + (b2 * 2.5f);
+    //speed = 0.5f + (z1 * 0.02f) + (b2 * 2.5f);
+    speed = band1 * 4.5f;
 }
 
 
@@ -131,7 +136,7 @@ void main(uint3 DTid : SV_DispatchThreadID)
         bullet.velY = 0.0f;
         
         // SIZE
-        bullet.baseRadius = 0.6f;
+        bullet.baseRadius = 0.25f;
         
         Bullets[index] = bullet;
         return;
@@ -215,8 +220,7 @@ void main(uint3 DTid : SV_DispatchThreadID)
     float currentSpeed = length(float2(bullet.velX, bullet.velY));
     
     // A. BASS PUMP ACCELERATOR
-    // TODO: Might be bad for the game feel.
-    float flowSpeed = 2.0f + (pow(band1, 3.0f) * 10.0f);
+    // TODO: Might be bad for the game feel. So, deleted. 
     
     // B. SWEEP VORTEX
     float turnRate = sweepFactor * 1.0f;
@@ -231,8 +235,8 @@ void main(uint3 DTid : SV_DispatchThreadID)
     bullet.velY = sin(currentAngle) * currentSpeed;
 
     // D. APPLY PHYSICS
-    bullet.posX += bullet.velX * flowSpeed * deltaTime;
-    bullet.posY += bullet.velY * flowSpeed * deltaTime;
+    bullet.posX += bullet.velX * deltaTime;
+    bullet.posY += bullet.velY * deltaTime;
 
     // E. PULSATING RADIUS
     //bullet.baseRadius = bullet.spikes + (pow(band1, 2.0f) * 0.02f);
@@ -245,11 +249,9 @@ void main(uint3 DTid : SV_DispatchThreadID)
     float dy = bullet.posY - playerPosY;
     float distSq = (dx * dx) + (dy * dy);
     
-    float totalRadius = hitRadius;
-    
-    if (distSq < (totalRadius * totalRadius))
+    if (distSq < (hitRadius * hitRadius))
     {
-        bullet.baseRadius = 10.0f; // TODO: Other visual feedback.
+        bullet.baseRadius = 0.1f; // TODO: Other visual feedback.
         InterlockedAdd(HitCounter[0], 1);
         bullet.state = 0;
     }

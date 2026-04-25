@@ -26,6 +26,8 @@ HWND SetupWindow(HINSTANCE hInstance, int width, int height);
 int WINAPI wWinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance, _In_ LPWSTR lpCmdLine, _In_ int nCmdShow)
 {
 
+#pragma region WINDOW SETUP
+
     // 0. UNUSED PARAMETERS
     UNREFERENCED_PARAMETER(hPrevInstance);
     UNREFERENCED_PARAMETER(lpCmdLine);
@@ -38,6 +40,11 @@ int WINAPI wWinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance, 
     HWND hWnd = SetupWindow(hInstance, WIDTH, HEIGHT);
 
     if (!hWnd) return -1;
+
+    MSG msg = {};
+
+#pragma endregion
+#pragma region INITIALIZATION
 
 	// 2. INITIALIZE SONIC CORE
 
@@ -72,13 +79,17 @@ int WINAPI wWinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance, 
 
 	g_stochastic.Initialize(1337);
 
+#pragma endregion
+#pragma region GAME LOOP
+#pragma region VARIABLES
+    
+    
     // 5. GAME LOOP
-
-    MSG msg = {};
 
     auto prevTime = std::chrono::high_resolution_clock::now();
     float accumulator = 0.0f;
-	float totalTime = 0.0f; // For sin/cos waves in bullet patterns
+
+	float totalTime = 0.0f;
 
 	// DEFINE GPU CONSTANTS STRUCTURE
 	GlobalConstants constants = {};
@@ -92,6 +103,7 @@ int WINAPI wWinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance, 
 	constants.grazeRadius = 0.2f;
 
     uint32_t currentSpawnIndex = 0; // For ring buffer of bullets (Poisson)
+#pragma endregion
 
     while (msg.message != WM_QUIT)
     {
@@ -102,6 +114,8 @@ int WINAPI wWinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance, 
         }
         else
         {
+
+#pragma region SIMULATION
             // ===========================================================================
             // FIXED TIMESTEP SIMULATION
             // ===========================================================================
@@ -117,10 +131,12 @@ int WINAPI wWinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance, 
             // ============================================================================
             const float fixedDeltaTime = 0.016f; // 60 FPS
 
-            // PLAYER
+#pragma endregion
+#pragma region PLAYER CONTROLLER
+			// PLAYER SPEED CONTROL
             float playerSpeed = 0.75f;
 
-            // HOLD SHIFT TO MOVE SLOWER FOR BETTER CONTROL
+            // HOLD SHIFT TO MOVE SLOWER
             if (GetAsyncKeyState(VK_SHIFT) & 0x8000) playerSpeed *= 0.5f;
 
             if (GetAsyncKeyState('D') & 0x8000) constants.playerPosX += playerSpeed * fixedDeltaTime;
@@ -128,7 +144,6 @@ int WINAPI wWinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance, 
             if (GetAsyncKeyState('W') & 0x8000) constants.playerPosY += playerSpeed * fixedDeltaTime;
             if (GetAsyncKeyState('S') & 0x8000) constants.playerPosY -= playerSpeed * fixedDeltaTime;
 
-			// SAME WITH ARROW KEYS
 			if (GetAsyncKeyState(VK_RIGHT) & 0x8000) constants.playerPosX += playerSpeed * fixedDeltaTime;
             if (GetAsyncKeyState(VK_LEFT) & 0x8000) constants.playerPosX -= playerSpeed * fixedDeltaTime;
             if (GetAsyncKeyState(VK_UP) & 0x8000) constants.playerPosY += playerSpeed * fixedDeltaTime;
@@ -137,9 +152,14 @@ int WINAPI wWinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance, 
             constants.playerPosX = std::clamp(constants.playerPosX, -2.0f, 2.0f);
             constants.playerPosY = std::clamp(constants.playerPosY, -2.0f, 2.0f);
 
+#pragma endregion
+
             while (accumulator >= fixedDeltaTime)
             {
-				g_sonicCore.Tick();
+
+#pragma region AUDIO ANALYSIS
+
+                g_sonicCore.Tick();
 
 				// Get all band energies for use in patterns and spawn rates
 
@@ -151,44 +171,61 @@ int WINAPI wWinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance, 
 				float presenceEnergy = g_sonicCore.GetBandEnergy(AudioBand::Presence);
 				float brillianceEnergy = g_sonicCore.GetBandEnergy(AudioBand::Brilliance);
 
-				float band1Energy = g_sonicCore.GetBandEnergy(AudioBand::Bass);
-				float band2Energy = g_sonicCore.GetBandEnergy(AudioBand::LowerMids);
-				float band3Energy = g_sonicCore.GetBandEnergy(AudioBand::HigherMids);
+				constants.band1 = bassEnergy;
+				constants.band2 = lowMidEnergy;
+				constants.band3 = highMidEnergy;
 
-				constants.band1 = band1Energy;
-				constants.band2 = band2Energy;
-				constants.band3 = band3Energy;
+#pragma endregion
 
+#pragma region PATTERN LOGIC
+#pragma endregion
+#pragma region BOSS BEHAVIOR
+#pragma endregion
+#pragma region SPAWN LOGIC
+#pragma endregion
+#pragma region EFFECT CONTROLS
+#pragma endregion
                 // SWEEP
-                float currentTilt = band3Energy - band1Energy;
+                float currentTilt = highMidEnergy - bassEnergy;
                 static float previousTilt = 0.0f;
                 float sweepVelocity = (currentTilt - previousTilt) / fixedDeltaTime;
                 previousTilt = currentTilt;
-                constants.sweepFactor = sweepVelocity * 0.5f;
+                constants.sweepFactor = sweepVelocity;
 
-				float dynamicSpawnRate = bassEnergy *  24.0f;
-
+				//float dynamicSpawnRate = bassEnergy *  20.0f;
 				//float dynamicSpawnRate = 0.0f + (band3Energy * 25.0f); // Base rate + scaled by band energy
 
-				float bossRoamRadius = 0.2f + (midEnergy * 25.0f);
+				float bossRoamRadius = 0.2f + (midEnergy * 500.0f);
 
                 static float patternCooldown = 0.0f;
                 static int currentPattern = 4;
                 patternCooldown -= fixedDeltaTime;
 
-                if (band1Energy > 0.15f && patternCooldown <= 0.0f)
+                if (bassEnergy > 0.15f && patternCooldown <= 0.0f)
                 {
                     currentPattern = (currentPattern + 1) % 5;
                     patternCooldown = 2.0f;
                 }
 
+                // 1. SPECTRAL FLUX
+                static float prevBassEnergy = 0.0f;
+                float bassHit = (std::max)(0.0f, bassEnergy - prevBassEnergy);
+                prevBassEnergy = bassEnergy;
+
+                float rhythmDensity = midEnergy + lowMidEnergy;
+
                 StochasticPayload payload = g_stochastic.ProcessAudioFrame
                 (
                     0.0f, 0.7f,
-                    dynamicSpawnRate, bossRoamRadius,
+                    /*dynamicSpawnRate*/ 0.0f, bossRoamRadius,
                     g_sonicCore.GetRawSpectrum()
 				);
 
+                float dynamicSpawnRate = ((bassHit * 150.0f) + (rhythmDensity * 20.0f)) * payload.chaosFactor;
+
+                dynamicSpawnRate = std::clamp(dynamicSpawnRate, 0.0f, 100.0f);
+
+                payload.spawnCount = g_stochastic.CalculatePoisson(dynamicSpawnRate);
 
                 constants.packedStateAndSpawn = (currentPattern << 16) | (payload.spawnCount & 0xFFFF);
 				float sweepFactor = sweepVelocity * 1.5f;
@@ -196,12 +233,17 @@ int WINAPI wWinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance, 
 
 				constants.chaosFactor = payload.chaosFactor;
 
-                constants.spatialSpread = 1.2f + (midEnergy * 75.0f);
+                constants.spatialSpread = 1.2f + (midEnergy * 10.0f);
 
 				// BOSS MOVEMENT CALCULATION
-                float bossSpeed = 1.5f + (band3Energy * 25.0f);
+                float bossSpeed = 1.5f + (highMidEnergy * 25.0f);
                 
                 constants.originX += sweepFactor * bossSpeed * fixedDeltaTime;
+
+                // Boss stays on the left side fix:
+                constants.originX = std::lerp(constants.originX, 0.0f, 2.0f * fixedDeltaTime);
+                constants.originX = std::clamp(constants.originX, -1.5f, 1.5f);
+
                 constants.originY = 0.8f - (bassEnergy * 0.1f);
 
 				// OLDER GAUSSIAN ROAMING
@@ -217,6 +259,7 @@ int WINAPI wWinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance, 
                 accumulator -= fixedDeltaTime;
             }
 
+#pragma region RENDERING
             // ===========================================================================
             // RENDERING CODE
             // ===========================================================================
@@ -224,18 +267,19 @@ int WINAPI wWinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance, 
 			constants.deltaTime = frameTime;
 			constants.totalTime = totalTime;
 
-
             g_renderer.BeginFrame();
             g_pipeline.Dispatch(g_renderer, constants);
 			g_renderer.IssueBarrier(g_renderer.GetCommandList(), g_pipeline.GetBulletBuffer(), D3D12_RESOURCE_STATE_UNORDERED_ACCESS, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
 			g_pipeline.Render(g_renderer, constants);
 			g_renderer.IssueBarrier(g_renderer.GetCommandList(), g_pipeline.GetBulletBuffer(), D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
             g_renderer.EndFrame();
+#pragma endregion
+
         }
     }
+#pragma endregion
 
     g_renderer.Shutdown();
-
     return (int)msg.wParam;
 }
 
@@ -271,7 +315,7 @@ HWND SetupWindow(HINSTANCE hInstance, int width, int height)
     RECT rc = { 0, 0, (LONG)width, (LONG)height };
     AdjustWindowRect(&rc, WS_OVERLAPPEDWINDOW, FALSE);
 
-    HWND hWnd = CreateWindow(CLASS_NAME, L"Squish Engine",
+    HWND hWnd = CreateWindow(CLASS_NAME, L"Danmaku CymatiX",
         WS_OVERLAPPEDWINDOW | WS_VISIBLE,
         CW_USEDEFAULT, CW_USEDEFAULT,
         rc.right - rc.left, rc.bottom - rc.top,
