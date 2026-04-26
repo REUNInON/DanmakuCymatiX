@@ -257,10 +257,26 @@ int WINAPI wWinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance, 
                 }
                 */
 
+#pragma region SPECTRAL FLUX
+                // 1. SPECTRAL FLUX
+
+                /*
+                static float prevBassEnergy = 0.0f;
+                float bassHit = (std::max)(0.0f, bassEnergy - prevBassEnergy);
+                prevBassEnergy = bassEnergy;
+
+                float rhythmDensity = midEnergy + lowMidEnergy;
+                */
+                static float prevTotalEnergy = 0.0f;
+
+                float hitTrigger = (std::max)(0.0f, totalEnergy - prevTotalEnergy);
+                prevTotalEnergy = totalEnergy;
+#pragma endregion
+
 #pragma region DYNAMIC GEAR SYSTEM
 				// EXPONENTIAL MOVING AVERAGE FOR SMOOTHING ENERGY VALUES (ADAPTIVE GEAR SYSTEM)
 				static float movingAverageEnergy = 0.0f;
-				float adaptSpeed = fixedDeltaTime * 5.05f; // ADJUST
+				float adaptSpeed = fixedDeltaTime * 5.0f; // ADJUST
 
                 if (totalTime < 1.0f)
                 {
@@ -272,46 +288,30 @@ int WINAPI wWinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance, 
                 }
 
                 // RELATIVE ENERGY RATIO
-				float energyRatio = totalEnergy / movingAverageEnergy + 0.0001f;
+				float energyRatio = totalEnergy / (movingAverageEnergy + 0.0001f);
 
                 if (frameCounter % 20 == 0)
-				std::cout << " || Energy Ratio: " << energyRatio << "\n";
+				std::cout << " || Energy Ratio: " << energyRatio;
 
 				// DYNAMIC GEAR SHIFTING
 				static int currentPattern = 1;
-
-                if (energyRatio >= 1.35f) 
-                {
+                if (energyRatio > 1.20f || hitTrigger > 0.4f) {
                     currentPattern = 4;
                 }
-                else if (energyRatio >= 1.15f)
-                {
+                else if (energyRatio > 1.08f) {
                     currentPattern = 3;
                 }
-                else if (energyRatio >= 0.85f)  
-                {
+                else if (energyRatio > 0.90f) {
                     currentPattern = 2;
                 }
-                else 
-                {
+                else {
                     currentPattern = 1;
-				}
+                }
+
+				std::cout << " || Current Pattern: " << currentPattern << "\n";
 
 #pragma endregion
 
-                // 1. SPECTRAL FLUX
-
-                /*
-                static float prevBassEnergy = 0.0f;
-                float bassHit = (std::max)(0.0f, bassEnergy - prevBassEnergy);
-                prevBassEnergy = bassEnergy;
-
-                float rhythmDensity = midEnergy + lowMidEnergy;
-                */
-                static float prevTotalEnergy = 0.0f;
-				
-				float hitTrigger = (std::max)(0.0f, totalEnergy - prevTotalEnergy);
-				prevTotalEnergy = totalEnergy;
 
 				float dynamicSpawnRate = hitTrigger * 75.0f;
 
