@@ -228,11 +228,18 @@ int WINAPI wWinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance, 
 				float bossRoamRadius = 0.0f + (midEnergy * 15.0f);
 
                 static int currentPattern = 4;
-
-                if (totalEnergy > 1.0f || bassEnergy > 0.25f) currentPattern = 2;
-                if (totalEnergy > 2.5f || lowMidEnergy > 0.25f) currentPattern = 3;
-                if (totalEnergy > 3.0f || presenceEnergy > 0.25f) currentPattern = 2;
-                if (totalEnergy > 4.0f || midEnergy > 0.25f) currentPattern = 4;
+                if (totalEnergy >= 5.0f) {
+                    currentPattern = 4;
+                }
+                else if (totalEnergy >= 3.5f) {
+                    currentPattern = 3;
+                }
+                else if (totalEnergy >= 1.0f) {
+                    currentPattern = 2;
+                }
+                else {
+                    currentPattern = 1;
+                }
 
                 // 1. SPECTRAL FLUX
 
