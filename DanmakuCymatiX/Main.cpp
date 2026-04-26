@@ -32,11 +32,15 @@ int WINAPI wWinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance, 
     UNREFERENCED_PARAMETER(hPrevInstance);
     UNREFERENCED_PARAMETER(lpCmdLine);
 
+    // Allocate console
+    
+    AllocConsole();
+
     FILE* stream; freopen_s(&stream, "CONOUT$", "w", stdout);
 
     // 1. OPEN WINDOW
-    const UINT WIDTH = 1920;
-    const UINT HEIGHT = 1080;
+    const UINT WIDTH = 800;
+    const UINT HEIGHT = 800;
     HWND hWnd = SetupWindow(hInstance, WIDTH, HEIGHT);
 
     if (!hWnd) return -1;
@@ -130,7 +134,6 @@ int WINAPI wWinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance, 
 	constants.grazeRadius = 0.2f;
 
     uint32_t currentSpawnIndex = 0; // For ring buffer of bullets (Poisson)
-    static float prevTotalEnergy = 0.0f;
 #pragma endregion
 
     while (msg.message != WM_QUIT)
@@ -203,7 +206,19 @@ int WINAPI wWinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance, 
 				constants.band2 = lowMidEnergy;
 				constants.band3 = highMidEnergy;
 
-				float totalEnergy = subBassEnergy + bassEnergy + lowMidEnergy + midEnergy + highMidEnergy + presenceEnergy + brillianceEnergy;
+				// Maybe remove subBass and brilliance from total energy to focus on midrange for patterns?
+				float totalEnergy = bassEnergy + lowMidEnergy + midEnergy + highMidEnergy + presenceEnergy;
+
+#pragma region AUDIO DEBUG
+
+                static int frameCounter = 0;
+                frameCounter++;
+
+                if (frameCounter % 20 == 0) {
+                    std::cout << "Energy: " << totalEnergy;
+                }
+
+#pragma endregion
 
 #pragma endregion
 
@@ -226,8 +241,8 @@ int WINAPI wWinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance, 
 				//float dynamicSpawnRate = 0.0f + (band3Energy * 25.0f); // Base rate + scaled by band energy
 
 				float bossRoamRadius = 0.0f + (midEnergy * 15.0f);
-
-                static int currentPattern = 4;
+                
+                /*
                 if (totalEnergy >= 5.0f) {
                     currentPattern = 4;
                 }
@@ -240,6 +255,49 @@ int WINAPI wWinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance, 
                 else {
                     currentPattern = 1;
                 }
+                */
+
+#pragma region DYNAMIC GEAR SYSTEM
+				// EXPONENTIAL MOVING AVERAGE FOR SMOOTHING ENERGY VALUES (ADAPTIVE GEAR SYSTEM)
+				static float movingAverageEnergy = 0.0f;
+				float adaptSpeed = fixedDeltaTime * 5.05f; // ADJUST
+
+                if (totalTime < 1.0f)
+                {
+                    movingAverageEnergy = totalEnergy;
+                }
+                else
+                {
+                    movingAverageEnergy = (adaptSpeed * totalEnergy) + ((1.0f - adaptSpeed) * movingAverageEnergy);
+                }
+
+                // RELATIVE ENERGY RATIO
+				float energyRatio = totalEnergy / movingAverageEnergy + 0.0001f;
+
+                if (frameCounter % 20 == 0)
+				std::cout << " || Energy Ratio: " << energyRatio << "\n";
+
+				// DYNAMIC GEAR SHIFTING
+				static int currentPattern = 1;
+
+                if (energyRatio >= 1.35f) 
+                {
+                    currentPattern = 4;
+                }
+                else if (energyRatio >= 1.15f)
+                {
+                    currentPattern = 3;
+                }
+                else if (energyRatio >= 0.85f)  
+                {
+                    currentPattern = 2;
+                }
+                else 
+                {
+                    currentPattern = 1;
+				}
+
+#pragma endregion
 
                 // 1. SPECTRAL FLUX
 
@@ -250,12 +308,12 @@ int WINAPI wWinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance, 
 
                 float rhythmDensity = midEnergy + lowMidEnergy;
                 */
-
+                static float prevTotalEnergy = 0.0f;
 				
 				float hitTrigger = (std::max)(0.0f, totalEnergy - prevTotalEnergy);
 				prevTotalEnergy = totalEnergy;
 
-				float dynamicSpawnRate = hitTrigger * 50.0f;
+				float dynamicSpawnRate = hitTrigger * 75.0f;
 
                 StochasticPayload payload = g_stochastic.ProcessAudioFrame
                 (

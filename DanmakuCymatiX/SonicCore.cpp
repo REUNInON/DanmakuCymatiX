@@ -80,5 +80,9 @@ float SonicCore::GetBandEnergy(AudioBand band) const
 		sum += m_spectrum[i];
 	}
 
-	return sum * range.invCount; // avoid division by zero
+	// TODO: OLD VERSION, LINEAR AMPLITUDE THAT IS USED WITH MULTIPLIERS INSTEAD OF LOGARITHMIC DECIBEL SCALE OR SQUARE ROOT.
+	//return sum * range.invCount; // avoid division by zero
+
+	// NEW VERSION: SQRT DECIBEL SCALE
+	return std::sqrt(sum * range.invCount);
 }

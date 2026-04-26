@@ -70,11 +70,12 @@ void PatternSweeper(uint index, float t, float b1, out float angle, out float sp
 {
     float streamCount = 6.0f;
     float streamID = float(index % int(streamCount));
-    float fanAngle = -1.5708f - 1.0f + (streamID * 0.4f);
+    float fanAngle = 1.5708f - 1.0f + (streamID * 0.4f);
     float swayAmount = 1.0f + (b1 * 2.0f);
     angle = fanAngle + sin(t * 3.0f) * swayAmount;
     //speed = 0.5f;
-    speed = band1 * 4.5f;
+    //speed = band1 * 4.5f;
+    speed = sweepFactor * 0.1f;
 }
 
 // Golden Ratio: Sunflower seed distribution forming a mesmerizing spiral.
