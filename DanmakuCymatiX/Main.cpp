@@ -80,9 +80,36 @@ int WINAPI wWinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance, 
 	g_stochastic.Initialize(1337);
 
 #pragma endregion
+
 #pragma region GAME LOOP
 #pragma region VARIABLES
-    
+
+    /*
+    float screenWidth;
+    float screenHeight;
+
+    uint32_t packedStateAndSpawn;
+    uint32_t spawnStartIndex;
+    float sweepFactor;
+    float chaosFactor;
+
+    float deltaTime;
+
+    float originX;
+    float originY;
+    float spatialSpread;
+    float totalTime;
+
+    float playerPosX;
+    float playerPosY;
+
+    float hitRadius;
+    float grazeRadius;
+
+    float band1;
+    float band2;
+    float band3;
+    */
     
     // 5. GAME LOOP
 
@@ -98,11 +125,12 @@ int WINAPI wWinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance, 
     constants.screenHeight = (float)HEIGHT;
 
 	constants.originX = 0.0f;
-	constants.originY = 0.0f;
+	constants.originY = 0.75f;
     constants.hitRadius = 0.045f;
 	constants.grazeRadius = 0.2f;
 
     uint32_t currentSpawnIndex = 0; // For ring buffer of bullets (Poisson)
+    static float prevTotalEnergy = 0.0f;
 #pragma endregion
 
     while (msg.message != WM_QUIT)
@@ -175,6 +203,8 @@ int WINAPI wWinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance, 
 				constants.band2 = lowMidEnergy;
 				constants.band3 = highMidEnergy;
 
+				float totalEnergy = subBassEnergy + bassEnergy + lowMidEnergy + midEnergy + highMidEnergy + presenceEnergy + brillianceEnergy;
+
 #pragma endregion
 
 #pragma region PATTERN LOGIC
@@ -195,24 +225,30 @@ int WINAPI wWinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance, 
 				//float dynamicSpawnRate = bassEnergy *  20.0f;
 				//float dynamicSpawnRate = 0.0f + (band3Energy * 25.0f); // Base rate + scaled by band energy
 
-				float bossRoamRadius = 0.2f + (midEnergy * 500.0f);
+				float bossRoamRadius = 0.0f + (midEnergy * 15.0f);
 
-                static float patternCooldown = 0.0f;
                 static int currentPattern = 4;
-                patternCooldown -= fixedDeltaTime;
 
-                if (bassEnergy > 0.15f && patternCooldown <= 0.0f)
-                {
-                    currentPattern = (currentPattern + 1) % 5;
-                    patternCooldown = 2.0f;
-                }
+                if (totalEnergy > 1.0f || bassEnergy > 0.25f) currentPattern = 2;
+                if (totalEnergy > 2.5f || lowMidEnergy > 0.25f) currentPattern = 3;
+                if (totalEnergy > 3.0f || presenceEnergy > 0.25f) currentPattern = 2;
+                if (totalEnergy > 4.0f || midEnergy > 0.25f) currentPattern = 4;
 
                 // 1. SPECTRAL FLUX
+
+                /*
                 static float prevBassEnergy = 0.0f;
                 float bassHit = (std::max)(0.0f, bassEnergy - prevBassEnergy);
                 prevBassEnergy = bassEnergy;
 
                 float rhythmDensity = midEnergy + lowMidEnergy;
+                */
+
+				
+				float hitTrigger = (std::max)(0.0f, totalEnergy - prevTotalEnergy);
+				prevTotalEnergy = totalEnergy;
+
+				float dynamicSpawnRate = hitTrigger * 50.0f;
 
                 StochasticPayload payload = g_stochastic.ProcessAudioFrame
                 (
@@ -221,36 +257,18 @@ int WINAPI wWinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance, 
                     g_sonicCore.GetRawSpectrum()
 				);
 
-                float dynamicSpawnRate = ((bassHit * 150.0f) + (rhythmDensity * 20.0f)) * payload.chaosFactor;
+                //float dynamicSpawnRate = ((bassHit * 10.0f) + (rhythmDensity * 5.0f)) /** payload.chaosFactor*/;
 
-                dynamicSpawnRate = std::clamp(dynamicSpawnRate, 0.0f, 100.0f);
 
                 payload.spawnCount = g_stochastic.CalculatePoisson(dynamicSpawnRate);
 
                 constants.packedStateAndSpawn = (currentPattern << 16) | (payload.spawnCount & 0xFFFF);
-				float sweepFactor = sweepVelocity * 1.5f;
-                constants.sweepFactor = sweepFactor;
+                
+                constants.sweepFactor = sweepVelocity;
 
 				constants.chaosFactor = payload.chaosFactor;
 
                 constants.spatialSpread = 1.2f + (midEnergy * 10.0f);
-
-				// BOSS MOVEMENT CALCULATION
-                float bossSpeed = 1.5f + (highMidEnergy * 25.0f);
-                
-                constants.originX += sweepFactor * bossSpeed * fixedDeltaTime;
-
-                // Boss stays on the left side fix:
-                constants.originX = std::lerp(constants.originX, 0.0f, 2.0f * fixedDeltaTime);
-                constants.originX = std::clamp(constants.originX, -1.5f, 1.5f);
-
-                constants.originY = 0.8f - (bassEnergy * 0.1f);
-
-				// OLDER GAUSSIAN ROAMING
-                // constants.originX += (payload.originX - constants.originX) * bossSpeed * fixedDeltaTime;
-                // constants.originY += (payload.originY - constants.originY) * bossSpeed * fixedDeltaTime;
-
-                constants.originX = std::clamp(constants.originX, -1.5f, 1.5f);
 
 				// POISSON SPAWN COUNT AND RING BUFFER INDEXING
 				constants.spawnStartIndex = currentSpawnIndex;

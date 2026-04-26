@@ -102,7 +102,7 @@ void PatternClassicShotgun(float spread, float b2, float z0, float z1, out float
     float baseAngle = -1.5708f;
     angle = baseAngle + (z0 * spread);
     //speed = 0.5f + (z1 * 0.02f) + (b2 * 2.5f);
-    speed = band1 * 4.5f;
+    speed = band1 * 7.5f;
 }
 
 
@@ -198,8 +198,11 @@ void main(uint3 DTid : SV_DispatchThreadID)
         
         // DENSITY BASED RADIUS
         
-        float densityRatio = saturate(abs(band1 * 5.0f));
-        float spawnRadius = lerp(0.4f, 0.05f, densityRatio);
+        float densityRatio = saturate((float)spawnCount);
+        // densityRatio = pow(densityRatio, 0.5f); // Optional: Non-linear scaling for more dramatic size changes
+        // densityRatio = band1; // Alternative: Directly use the band value for a more linear relationship
+        //float spawnRadius = lerp(1.0f, 0.05f, densityRatio);
+        float spawnRadius = band3 + 0.075f; // Base radius plus audio-reactive component
         bullet.baseRadius = spawnRadius;
         
         bullet.spikes = spawnRadius;
@@ -216,23 +219,23 @@ void main(uint3 DTid : SV_DispatchThreadID)
     // ===============================================================
     
     // Bullet Hell Core
-    float currentAngle = atan2(bullet.velY, bullet.velX);
-    float currentSpeed = length(float2(bullet.velX, bullet.velY));
+    //float currentAngle = atan2(bullet.velY, bullet.velX);
+    //float currentSpeed = length(float2(bullet.velX, bullet.velY)) * band2;
     
     // A. BASS PUMP ACCELERATOR
-    // TODO: Might be bad for the game feel. So, deleted. 
+    // TODO: Might be bad for the game feel. So, deleted.
     
     // B. SWEEP VORTEX
-    float turnRate = sweepFactor * 1.0f;
+    //float turnRate = sweepFactor;
     
     // Jitter
-    float jitter = sin(totalTime * 15.0f + index) * band3 * 0.5f;
+    //float jitter = sin(totalTime * 15.0f + index) * chaosFactor * 1.0f;
     
     // C. UPDATE ORBIT
-    currentAngle += (turnRate + jitter) * deltaTime;
+    //currentAngle += (turnRate + jitter) * deltaTime;
     
-    bullet.velX = cos(currentAngle) * currentSpeed;
-    bullet.velY = sin(currentAngle) * currentSpeed;
+    //bullet.velX = cos(currentAngle) * currentSpeed;
+    //bullet.velY = sin(currentAngle) * currentSpeed;
 
     // D. APPLY PHYSICS
     bullet.posX += bullet.velX * deltaTime;
