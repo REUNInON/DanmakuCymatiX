@@ -103,7 +103,7 @@ void PatternClassicShotgun(float spread, float b2, float z0, float z1, out float
     float baseAngle = -1.5708f;
     angle = baseAngle + (z0 * spread);
     //speed = 0.5f + (z1 * 0.02f) + (b2 * 2.5f);
-    speed = band1 * 7.5f;
+    speed = band1 * 5.5f;
 }
 
 
@@ -203,7 +203,7 @@ void main(uint3 DTid : SV_DispatchThreadID)
         // densityRatio = pow(densityRatio, 0.5f); // Optional: Non-linear scaling for more dramatic size changes
         // densityRatio = band1; // Alternative: Directly use the band value for a more linear relationship
         //float spawnRadius = lerp(1.0f, 0.05f, densityRatio);
-        float spawnRadius = band3 + 0.075f; // Base radius plus audio-reactive component
+        float spawnRadius = band2 * 0.2f + 0.05f; // Base radius plus audio-reactive component
         bullet.baseRadius = spawnRadius;
         
         bullet.spikes = spawnRadius;

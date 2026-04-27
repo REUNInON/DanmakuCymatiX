@@ -292,7 +292,7 @@ int WINAPI wWinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance, 
 
 
 				// Ratio Smoothing - Hysteresis for stable pattern transitions
-                static float smoothedRatio = 1.0f;
+                static float smoothedRatio = 5.0f;
                 float ratioSmoothSpeed = fixedDeltaTime * 10.0f; 
                 smoothedRatio = (ratioSmoothSpeed * energyRatio) + ((1.0f - ratioSmoothSpeed) * smoothedRatio);
 
@@ -319,12 +319,13 @@ int WINAPI wWinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance, 
                     currentPattern = 1;
                 }
 
+				if (frameCounter % 20 == 0)
 				std::cout << " || Current Pattern: " << currentPattern << "\n";
 
 #pragma endregion
 
 
-				float dynamicSpawnRate = hitTrigger * 50.0f;
+				float dynamicSpawnRate = hitTrigger * 30.0f;
 
                 StochasticPayload payload = g_stochastic.ProcessAudioFrame
                 (

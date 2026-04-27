@@ -40,14 +40,16 @@ float4 DrawBullet(float2 uv)
     float distance = length(center);
     
     // 3. Bullet Core, Anti-Aliased Edge
-    float core = smoothstep(0.1, 0.05, distance); // < 0.1 opaque, > 0.02 transparent
+    float coreRadius = 0.05 + (band3 * 0.05);
+    float core = smoothstep(0.1, coreRadius * 0.2, distance); // < 0.1 opaque, > 0.02 transparent
     
     // 4. Glow Effect (Outer Ring)
-    float glow = exp(-distance * 10.0) * 1.75; // Exponential decay for glow
+    float dynamicGlow = 1.0 + chaosFactor * 4.5;
+    float glow = exp(-distance * 25.0) * dynamicGlow; // Exponential decay for glow
     
-    float3 baseColor = float3(0.5, 0.0, 0.2); // Pink color for the bullet
+    float3 baseColor = float3(1.0, 0.0, 0.25); // Pink color for the bullet    
     
-    float3 finalColor = (baseColor * glow) + (float3(1.0, 0.0, 0.2) * core); // Modulate color by core and glow
+    float3 finalColor = (baseColor * glow) + (float3(1.0, 0.0, 0.8) * core); // Modulate color by core and glow
     
     float alpha = 0.5 - smoothstep(0.95, 1.0, distance); // Alpha based on distance for anti-aliasing
     
