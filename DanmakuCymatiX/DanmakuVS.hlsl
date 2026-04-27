@@ -10,6 +10,9 @@ struct VS_OUTPUT
 {
     float4 position : SV_POSITION;
     float2 uv : TEXCOORD0;
+    
+    nointerpolation float baseRadius : RADIUS;
+    nointerpolation uint state : STATE;
 };
 
 struct BulletGPU
@@ -45,14 +48,6 @@ cbuffer GlobalConstants : register(b0)
     float band2;
     float band3;
 };
-
-/* Alternative: Separate cbuffer for screen dimensions
-cbuffer InstanceData : register(b0)
-{
-    float screenWidth;
-    float screenHeight;    
-};
-*/
 
 StructuredBuffer<BulletGPU> instanceBuffer : register(t0);
 
@@ -94,6 +89,9 @@ VS_OUTPUT main(VS_INPUT input)
     
     // WORLD COORDINATES OF THE BULLET
     output.position = float4(bullet.posX + localPos.x, bullet.posY + localPos.y, 0.0, 1.0);
-
+    
+    output.state = bullet.state;
+    output.baseRadius = bullet.baseRadius;
+    
     return output;
 }

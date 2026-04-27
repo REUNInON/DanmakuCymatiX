@@ -127,7 +127,7 @@ void main(uint3 DTid : SV_DispatchThreadID)
     // ===============================================================
     if (index == 99999)
     {
-        bullet.state = 1; // UNDYING
+        bullet.state = 99; // PLAYER
         
         bullet.posX = playerPosX;
         bullet.posY = playerPosY;
@@ -137,7 +137,7 @@ void main(uint3 DTid : SV_DispatchThreadID)
         bullet.velY = 0.0f;
         
         // SIZE
-        bullet.baseRadius = 0.25f;
+        bullet.baseRadius = 0.06f;
         
         Bullets[index] = bullet;
         return;

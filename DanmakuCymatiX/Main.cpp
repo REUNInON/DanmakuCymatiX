@@ -130,7 +130,7 @@ int WINAPI wWinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance, 
 
 	constants.originX = 0.0f;
 	constants.originY = 0.75f;
-    constants.hitRadius = 0.045f;
+    constants.hitRadius = 0.02f;
 	constants.grazeRadius = 0.2f;
 
     uint32_t currentSpawnIndex = 0; // For ring buffer of bullets (Poisson)
@@ -290,21 +290,32 @@ int WINAPI wWinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance, 
                 // RELATIVE ENERGY RATIO
 				float energyRatio = totalEnergy / (movingAverageEnergy + 0.0001f);
 
-                if (frameCounter % 20 == 0)
-				std::cout << " || Energy Ratio: " << energyRatio;
 
-				// DYNAMIC GEAR SHIFTING
-				static int currentPattern = 1;
-                if (energyRatio > 1.20f || hitTrigger > 0.4f) {
+				// Ratio Smoothing - Hysteresis for stable pattern transitions
+                static float smoothedRatio = 1.0f;
+                float ratioSmoothSpeed = fixedDeltaTime * 10.0f; 
+                smoothedRatio = (ratioSmoothSpeed * energyRatio) + ((1.0f - ratioSmoothSpeed) * smoothedRatio);
+
+                static int currentPattern = 1;
+
+                if (currentPattern < 4 && (smoothedRatio > 1.15f || hitTrigger > 0.15f)) {
                     currentPattern = 4;
                 }
-                else if (energyRatio > 1.08f) {
+                else if (currentPattern == 4 && smoothedRatio < 1.08f) {
                     currentPattern = 3;
                 }
-                else if (energyRatio > 0.90f) {
+
+                else if (currentPattern < 3 && smoothedRatio > 1.06f) {
+                    currentPattern = 3;
+                }
+                else if (currentPattern == 3 && smoothedRatio < 1.02f) {
                     currentPattern = 2;
                 }
-                else {
+
+                else if (currentPattern < 2 && smoothedRatio > 0.95f) {
+                    currentPattern = 2;
+                }
+                else if (currentPattern == 2 && smoothedRatio < 0.88f) {
                     currentPattern = 1;
                 }
 
@@ -313,7 +324,7 @@ int WINAPI wWinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance, 
 #pragma endregion
 
 
-				float dynamicSpawnRate = hitTrigger * 75.0f;
+				float dynamicSpawnRate = hitTrigger * 50.0f;
 
                 StochasticPayload payload = g_stochastic.ProcessAudioFrame
                 (
