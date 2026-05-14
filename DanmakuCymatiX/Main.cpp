@@ -39,8 +39,8 @@ int WINAPI wWinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance, 
     FILE* stream; freopen_s(&stream, "CONOUT$", "w", stdout);
 
     // 1. OPEN WINDOW
-    const UINT WIDTH = 800;
-    const UINT HEIGHT = 800;
+    const UINT WIDTH = 1600;
+    const UINT HEIGHT = 1600;
     HWND hWnd = SetupWindow(hInstance, WIDTH, HEIGHT);
 
     if (!hWnd) return -1;
@@ -325,7 +325,7 @@ int WINAPI wWinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance, 
 #pragma endregion
 
 
-				float dynamicSpawnRate = hitTrigger * 30.0f;
+				float dynamicSpawnRate = hitTrigger * 45.0f;
 
                 StochasticPayload payload = g_stochastic.ProcessAudioFrame
                 (
@@ -349,7 +349,7 @@ int WINAPI wWinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance, 
 
 				// POISSON SPAWN COUNT AND RING BUFFER INDEXING
 				constants.spawnStartIndex = currentSpawnIndex;
-				currentSpawnIndex = (currentSpawnIndex + payload.spawnCount) % DanmakuPipeline::MAX_BULLETS;
+				currentSpawnIndex = (currentSpawnIndex + payload.spawnCount) % (DanmakuPipeline::MAX_BULLETS - 1); // 99999 is player
 
                 accumulator -= fixedDeltaTime;
             }
