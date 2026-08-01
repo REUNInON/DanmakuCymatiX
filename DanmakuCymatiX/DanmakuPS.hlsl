@@ -47,9 +47,9 @@ float4 DrawBullet(float2 uv)
     float dynamicGlow = 1.0 + chaosFactor * 4.5;
     float glow = exp(-distance * 18.0) * dynamicGlow; // Exponential decay for glow
     
-    float3 baseColor = float3(1.0, 0.0, 0.25); // Pink color for the bullet    
+    float3 baseColor = float3(0.15, 0.0, 1.0); // Pink color for the bullet    
     
-    float3 finalColor = (baseColor * glow) + (float3(1.0, 0.8, 0.8) * core); // Modulate color by core and glow
+    float3 finalColor = (baseColor * glow) + (float3(0.5, 0.75, 1.0) * core); // Modulate color by core and glow
     
     float alpha = 0.5 - smoothstep(0.95, 1.0, distance); // Alpha based on distance for anti-aliasing
     
@@ -68,14 +68,14 @@ float4 DrawPlayer(float2 uv, float exactHitRadius, float quadBaseRadius)
     
     // 3. Glow Effect (Inner Ring) & Color
     float glow = pow(diamondDistance, 1.5) * 1.5;
-    float3 baseColor = float3(0.5, 0.0, 0.75);
+    float3 baseColor = float3(0.5, band1, band1 * 2);
     
     // 4. Core Effect
     float hitUVRadius = exactHitRadius / quadBaseRadius;
     float euclideanDistance = length(center);
     
     float hitCore = smoothstep(hitUVRadius, hitUVRadius * 0.2, euclideanDistance);
-    float3 coreColor = float3(0.0, 1.0, 0.1);
+    float3 coreColor = float3(1.0, 0.1, 0.8);
     
     // 5. Combine Effects
     float3 finalColor = (baseColor * glow) + (coreColor * hitCore);
