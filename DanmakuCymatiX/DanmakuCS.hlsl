@@ -84,7 +84,8 @@ void PatternGoldenRatio(uint index, float t, out float angle, out float speed)
     float goldenAngle = 2.39996f;
     angle = float(index) * goldenAngle + (t * 1.5f);
     //speed = 0.02f + (float(index % 100) * 0.005f);
-    speed = band1 * 4.5f;
+    float rawSpeed = band1 * 4.5f;
+    speed = max(0.05f, rawSpeed);
 }
 
 // Audio-Reactive Nova: 360-degree bursts. Burst speed scales heavily with Bass (band1).
@@ -94,7 +95,8 @@ void PatternAudioNova(uint index, float b1, out float angle, out float speed)
     float ringIndex = float(index % int(bulletsPerRing));
     angle = (ringIndex / bulletsPerRing) * 6.28318f;
     //speed = 0.1f + (b1 * 0.75f);
-    speed = band1 * 4.5f;
+    float rawSpeed = band1 * 4.5f;
+    speed = max(0.05f, rawSpeed);
 }
 
 // Classic Shotgun: Pure Box-Muller Gaussian spread downwards.
@@ -103,7 +105,8 @@ void PatternClassicShotgun(float spread, float b2, float z0, float z1, out float
     float baseAngle = -1.5708f;
     angle = baseAngle + (z0 * spread);
     //speed = 0.5f + (z1 * 0.02f) + (b2 * 2.5f);
-    speed = band1 * 5.5f;
+    float rawSpeed = band1 * 5.5f;
+    speed = max(0.05f, rawSpeed);
 }
 
 
@@ -137,7 +140,7 @@ void main(uint3 DTid : SV_DispatchThreadID)
         bullet.velY = 0.0f;
         
         // SIZE
-        bullet.baseRadius = 0.06f;
+        bullet.baseRadius = 0.05f;
         
         Bullets[index] = bullet;
         return;

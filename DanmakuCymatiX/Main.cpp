@@ -276,7 +276,7 @@ int WINAPI wWinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance, 
 #pragma region DYNAMIC GEAR SYSTEM
 				// EXPONENTIAL MOVING AVERAGE FOR SMOOTHING ENERGY VALUES (ADAPTIVE GEAR SYSTEM)
 				static float movingAverageEnergy = 0.0f;
-				float adaptSpeed = fixedDeltaTime * 5.0f; // ADJUST
+				float adaptSpeed = fixedDeltaTime * 1.0f; // ADJUST
 
                 if (totalTime < 1.0f)
                 {
@@ -298,24 +298,24 @@ int WINAPI wWinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance, 
 
                 static int currentPattern = 1;
 
-                if (currentPattern < 4 && (smoothedRatio > 1.15f || hitTrigger > 0.15f)) {
+                if (currentPattern < 4 && smoothedRatio > 1.08f) {
                     currentPattern = 4;
                 }
-                else if (currentPattern == 4 && smoothedRatio < 1.08f) {
+                else if (currentPattern == 4 && smoothedRatio < 1.04f) {
                     currentPattern = 3;
                 }
 
-                else if (currentPattern < 3 && smoothedRatio > 1.06f) {
+                else if (currentPattern < 3 && smoothedRatio > 1.02f) {
                     currentPattern = 3;
                 }
-                else if (currentPattern == 3 && smoothedRatio < 1.02f) {
+                else if (currentPattern == 3 && smoothedRatio < 0.98f) {
                     currentPattern = 2;
                 }
 
-                else if (currentPattern < 2 && smoothedRatio > 0.95f) {
+                else if (currentPattern < 2 && smoothedRatio > 0.94f) {
                     currentPattern = 2;
                 }
-                else if (currentPattern == 2 && smoothedRatio < 0.88f) {
+                else if (currentPattern == 2 && smoothedRatio < 0.90f) {
                     currentPattern = 1;
                 }
 
@@ -325,7 +325,7 @@ int WINAPI wWinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance, 
 #pragma endregion
 
 
-				float dynamicSpawnRate = hitTrigger * 45.0f;
+				float dynamicSpawnRate = hitTrigger * 75.0f;
 
                 StochasticPayload payload = g_stochastic.ProcessAudioFrame
                 (
